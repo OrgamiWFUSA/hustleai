@@ -7,6 +7,12 @@ import json
 from datetime import datetime, timedelta
 
 # ----------------------------------------------------------------------
+# PAGE CONFIG + ENABLE BACK BUTTON
+# ----------------------------------------------------------------------
+st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered", initial_sidebar_state="expanded")
+st.experimental_set_query_params(**st.experimental_get_query_params())
+
+# ----------------------------------------------------------------------
 # OPENAI KEY - FROM SECRETS ONLY
 # ----------------------------------------------------------------------
 if "OPENAI_API_KEY" not in st.secrets:
