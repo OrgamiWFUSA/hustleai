@@ -48,34 +48,44 @@ users = load_json("users.json", {})
 posts = load_json("posts.json", [])
 
 # ----------------------------------------------------------------------
+# GUEST TRACKING (IP-based)
+# ----------------------------------------------------------------------
+GUESTS_FILE = "guests.json"
+guests = load_json(GUESTS_FILE, {})
+
+def get_ip():
+    try:
+        return st.context.headers.get("X-Forwarded-For", "unknown").split(',')[0].strip()
+    except:
+        return "unknown"
+
+# Capture IP on first load
+if "ip" not in st.session_state:
+    st.session_state.ip = get_ip()
+
+# ----------------------------------------------------------------------
 # AI FUNCTIONS — WITH ERROR HANDLING
 # ----------------------------------------------------------------------
 def generate_hustles(skills):
     try:
         client = OpenAI(api_key=openai_key)
-        resp = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user",
-                       "content": f"Generate 3 side hustle ideas for someone skilled in {skills}. "
-                                  "Each idea must include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) "
-                                  "3. 3-step launch plan. Format as numbered list with bold headings."}]
+            messages=[{"role": "user", "content": f"Generate 3 side hustle ideas for someone skilled in {skills}. Each idea should include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) 3. 3-step launch plan with specific actions. Format as numbered list with bold headings."}]
         )
-        return resp.choices[0].message.content
+        return response.choices[0].message.content
     except Exception as e:
-        st.error(f"OpenAI error: {e}")
-        return "Error generating ideas."
+        st.error(f"OpenAI error: {e}. Check your API key in secrets.")
+        return "Error generating ideas. Please try again."
 
 def generate_single_hustle(skills):
     try:
         client = OpenAI(api_key=openai_key)
-        resp = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user",
-                       "content": f"Generate 1 side hustle idea for someone skilled in {skills}. "
-                                  "Include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) "
-                                  "3. 3-step launch plan. Format with bold headings."}]
+            messages=[{"role": "user", "content": f"Generate 1 side hustle idea for someone skilled in {skills}. Include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) 3. 3-step launch plan with specific actions. Format with bold headings."}]
         )
-        return resp.choices[0].message.content
+        return response.choices[0].message.content
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return "Error."
@@ -83,13 +93,11 @@ def generate_single_hustle(skills):
 def generate_checklist(idea):
     try:
         client = OpenAI(api_key=openai_key)
-        resp = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user",
-                       "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates "
-                                  "(start from today, spread over 1 month). Format as numbered list with editable due dates."}]
+            messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format as numbered list with editable due dates."}]
         )
-        txt = resp.choices[0].message.content
+        txt = response.choices[0].message.content
         lines = txt.split('\n')
         goals = []
         for line in lines:
@@ -133,13 +141,20 @@ if 'free_count' not in st.session_state: st.session_state.free_count = 0
 if 'is_pro' not in st.session_state: st.session_state.is_pro = False
 
 # ----------------------------------------------------------------------
-# Home – RESUME SAVED PER USER
+# Home – RESUME SAVED PER USER + GUEST LIMIT
 # ----------------------------------------------------------------------
 if page == "Home":
     st.title("HustleAI – AI Side Hustle Generator")
     st.write("Upload a resume or type your skills to get personalized ideas!")
 
-    # Load saved skills
+    # GUEST LIMIT (IP-based)
+    if 'user_email' not in st.session_state:
+        ip = get_ip()
+        if guests.get(ip, 0) >= 3:
+            st.warning("Free limit reached (3 ideas). Sign up to continue!")
+            st.stop()
+
+    # Load saved skills for logged-in user
     skills = ""
     if 'user_email' in st.session_state:
         email = st.session_state.user_email
@@ -148,6 +163,11 @@ if page == "Home":
             with open(skills_path, "r", encoding="utf-8") as f:
                 skills = f.read()
             st.success("Skills loaded from your saved resume!")
+
+    # FREE LIMIT FOR LOGGED-IN USERS
+    if 'user_email' in st.session_state and not st.session_state.is_pro and st.session_state.free_count >= 3:
+        st.warning("Free limit reached (3 ideas/month). Upgrade to Pro!")
+        st.stop()
 
     if st.session_state.free_count >= 3 and not st.session_state.is_pro:
         st.warning("Free limit reached (3 ideas/month). Upgrade for unlimited!")
@@ -185,6 +205,18 @@ if page == "Home":
                 st.session_state.idea_index = 0
                 st.session_state.liked_idea = None
                 st.success("Ideas ready! Swipe left/right.")
+
+                # INCREMENT FREE COUNT
+                if 'user_email' in st.session_state:
+                    email = st.session_state.user_email
+                    users[email]["free_count"] = users[email].get("free_count", 0) + 1
+                    save_json("users.json", users)
+                    st.session_state.free_count = users[email]["free_count"]
+                else:
+                    ip = get_ip()
+                    guests[ip] = guests.get(ip, 0) + 1
+                    save_json(GUESTS_FILE, guests)
+
             else:
                 st.warning("Enter skills or upload a resume first.")
 
@@ -200,6 +232,16 @@ if page == "Home":
                         new = generate_single_hustle(final_skills)
                         st.session_state.ideas_list[idx] = new
                         st.success("New idea generated!")
+                        # INCREMENT FREE COUNT
+                        if 'user_email' in st.session_state:
+                            email = st.session_state.user_email
+                            users[email]["free_count"] = users[email].get("free_count", 0) + 1
+                            save_json("users.json", users)
+                            st.session_state.free_count = users[email]["free_count"]
+                        else:
+                            ip = get_ip()
+                            guests[ip] = guests.get(ip, 0) + 1
+                            save_json(GUESTS_FILE, guests)
                 with c2:
                     if st.button("Swipe Right (Like)"):
                         st.session_state.liked_idea = lst[idx]
@@ -211,12 +253,7 @@ if page == "Home":
                             st.success("Checklist saved!")
                         st.success("Liked! See the Checklist page.")
             else:
-                st.info("No more ideas – generate a new batch or upgrade.")
-
-    if not st.session_state.is_pro and 'ideas_list' in st.session_state:
-        st.session_state.free_count += 1
-        if st.session_state.free_count >= 3:
-            st.warning("Free limit reached – upgrade for more!")
+                st.info("No more ideas – generate a new batch or upgrade for more.")
 
 # ----------------------------------------------------------------------
 # Login
@@ -229,6 +266,8 @@ elif page == "Login":
         if email in users and users[email]["password"] == password:
             st.session_state.user_email = email
             st.session_state.username = users[email]["username"]
+            st.session_state.free_count = users[email].get("free_count", 0)
+            st.session_state.is_pro = users[email].get("is_pro", False)
             st.success(f"Signed in as {st.session_state.username}!")
         else:
             st.error("Invalid email or password.")
