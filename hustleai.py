@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 # OPENAI KEY - MUST MATCH SECRET NAME EXACTLY
 # ----------------------------------------------------------------------
 try:
-    openai_key = st.secrets["OPENAI_API_KEY"]
+    openai_key = st.secrets["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"]
 except:
     st.error("OpenAI API key not found in secrets. Add it in Streamlit Cloud → Settings → Secrets")
     st.stop()
