@@ -28,9 +28,6 @@ CHECKLIST_DIR = "checklists"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(CHECKLIST_DIR, exist_ok=True)
 
-# ----------------------------------------------------------------------
-# JSON HELPERS
-# ----------------------------------------------------------------------
 def load_json(path, default):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
@@ -41,14 +38,11 @@ def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
-# ----------------------------------------------------------------------
-# LOAD DATA ON EVERY RUN
-# ----------------------------------------------------------------------
 users = load_json("users.json", {})
 posts = load_json("posts.json", [])
 
 # ----------------------------------------------------------------------
-# GUEST TRACKING (IP-based)
+# GUEST TRACKING
 # ----------------------------------------------------------------------
 GUESTS_FILE = "guests.json"
 guests = load_json(GUESTS_FILE, {})
@@ -59,12 +53,11 @@ def get_ip():
     except:
         return "unknown"
 
-# Capture IP on first load
 if "ip" not in st.session_state:
     st.session_state.ip = get_ip()
 
 # ----------------------------------------------------------------------
-# AI FUNCTIONS — WITH ERROR HANDLING
+# AI FUNCTIONS
 # ----------------------------------------------------------------------
 def generate_hustles(skills):
     try:
@@ -75,8 +68,8 @@ def generate_hustles(skills):
         )
         return response.choices[0].message.content
     except Exception as e:
-        st.error(f"OpenAI error: {e}. Check your API key in secrets.")
-        return "Error generating ideas. Please try again."
+        st.error(f"OpenAI error: {e}")
+        return "Error generating ideas."
 
 def generate_single_hustle(skills):
     try:
@@ -112,18 +105,92 @@ def generate_checklist(idea):
         return []
 
 # ----------------------------------------------------------------------
-# Styling
+# BEAUTIFUL DESIGN
 # ----------------------------------------------------------------------
+st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered")
+
 st.markdown("""
 <style>
-.stApp {background-color:#f0f2f6;}
-.stButton>button{background:#4CAF50;color:#fff;padding:10px 20px;border-radius:5px;}
-.stButton>button:hover{background:#45a049;}
-.stTextInput>div>div>div{background:#fff;border:1px solid #ddd;border-radius:5px;}
-.stSidebar .stSidebarContent{background:#e0e0e0;}
-.stExpander{border:1px solid #ddd;border-radius:5px;padding:10px;margin-bottom:10px;}
+    .main {
+        background: linear-gradient(135deg, #e0f7fa, #ffffff);
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .logo {
+        display: block;
+        margin: 0 auto 1rem auto;
+        max-width: 180px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .title {
+        font-size: 2.8rem;
+        font-weight: 700;
+        text-align: center;
+        color: #1565c0;
+        margin-bottom: 0.5rem;
+    }
+    .subtitle {
+        text-align: center;
+        color: #555;
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }
+    .stButton>button {
+        background: linear-gradient(45deg, #42a5f5, #1976d2);
+        color: white;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 25px;
+        font-weight: 600;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+    }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+    .stTextInput>div>div>input {
+        border-radius: 12px;
+        border: 1px solid #90caf9;
+        padding: 0.8rem;
+    }
+    .stFileUploader>div>div {
+        border-radius: 12px;
+        border: 2px dashed #42a5f5;
+        padding: 1rem;
+    }
+    .stExpander {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #bbdefb;
+        margin-bottom: 1rem;
+    }
+    .stSuccess {
+        background: #e8f5e8;
+        color: #2e7d32;
+        border-radius: 12px;
+        padding: 0.8rem;
+    }
+    .stWarning {
+        background: #fff3e0;
+        color: #f57c00;
+        border-radius: 12px;
+        padding: 0.8rem;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# Logo
+try:
+    st.image("logo.png", use_column_width=False, width=180, output_format="PNG")
+except:
+    st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
+else:
+    st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
+
+st.markdown("<p class='subtitle'>Turn your skills into side income — in seconds.</p>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
 # Navigation
@@ -141,20 +208,17 @@ if 'free_count' not in st.session_state: st.session_state.free_count = 0
 if 'is_pro' not in st.session_state: st.session_state.is_pro = False
 
 # ----------------------------------------------------------------------
-# Home – RESUME SAVED PER USER + GUEST LIMIT
+# Home
 # ----------------------------------------------------------------------
 if page == "Home":
-    st.title("HustleAI – AI Side Hustle Generator")
-    st.write("Upload a resume or type your skills to get personalized ideas!")
-
-    # GUEST LIMIT (IP-based)
+    # GUEST LIMIT
     if 'user_email' not in st.session_state:
         ip = get_ip()
         if guests.get(ip, 0) >= 3:
             st.warning("Free limit reached (3 ideas). Sign up to continue!")
             st.stop()
 
-    # Load saved skills for logged-in user
+    # Load saved skills
     skills = ""
     if 'user_email' in st.session_state:
         email = st.session_state.user_email
@@ -164,11 +228,6 @@ if page == "Home":
                 skills = f.read()
             st.success("Skills loaded from your saved resume!")
 
-    # FREE LIMIT FOR LOGGED-IN USERS
-    if 'user_email' in st.session_state and not st.session_state.is_pro and st.session_state.free_count >= 3:
-        st.warning("Free limit reached (3 ideas/month). Upgrade to Pro!")
-        st.stop()
-
     if st.session_state.free_count >= 3 and not st.session_state.is_pro:
         st.warning("Free limit reached (3 ideas/month). Upgrade for unlimited!")
         st.info("Pro: $4.99/month – unlimited ideas, priority AI, exclusive templates.")
@@ -176,7 +235,6 @@ if page == "Home":
         uploaded_file = st.file_uploader("Upload resume (TXT/PDF)", type=['txt', 'pdf'])
         skills_input = st.text_input("Or enter skills manually:", value=skills)
 
-        # SAVE RESUME + SKILLS
         if uploaded_file:
             if 'user_email' not in st.session_state:
                 st.error("Sign in to save resume.")
@@ -186,7 +244,6 @@ if page == "Home":
                 file_path = os.path.join(UPLOAD_DIR, f"{email}_resume.{ext}")
                 with open(file_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
-                # Extract skills
                 if uploaded_file.type == "text/plain":
                     extracted = uploaded_file.read().decode("utf-8")
                 else:
@@ -216,7 +273,6 @@ if page == "Home":
                     ip = get_ip()
                     guests[ip] = guests.get(ip, 0) + 1
                     save_json(GUESTS_FILE, guests)
-
             else:
                 st.warning("Enter skills or upload a resume first.")
 
@@ -232,7 +288,6 @@ if page == "Home":
                         new = generate_single_hustle(final_skills)
                         st.session_state.ideas_list[idx] = new
                         st.success("New idea generated!")
-                        # INCREMENT FREE COUNT
                         if 'user_email' in st.session_state:
                             email = st.session_state.user_email
                             users[email]["free_count"] = users[email].get("free_count", 0) + 1
@@ -276,7 +331,7 @@ elif page == "Login":
         st.switch_page("pages/_signup.py")
 
 # ----------------------------------------------------------------------
-# Community – nested replies
+# Community
 # ----------------------------------------------------------------------
 elif page == "Community":
     st.title("Community Forum: Share Your Wins!")
