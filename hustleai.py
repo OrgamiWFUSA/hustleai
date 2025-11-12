@@ -7,19 +7,18 @@ import json
 from datetime import datetime, timedelta
 
 # ----------------------------------------------------------------------
-# OPENAI KEY - MUST MATCH SECRET NAME EXACTLY
+# OPENAI KEY - FROM SECRETS ONLY
 # ----------------------------------------------------------------------
-try:
-    openai_key = st.secrets["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"]
-except:
-    st.error("OpenAI API key not found in secrets. Add it in Streamlit Cloud → Settings → Secrets")
+if "OPENAI_API_KEY" not in st.secrets:
+    st.error("OPENAI_API_KEY missing! Add it in Streamlit Cloud → Settings → Secrets")
     st.stop()
+openai_key = st.secrets["OPENAI_API_KEY"]
 
 # ----------------------------------------------------------------------
 # STRIPE KEYS
 # ----------------------------------------------------------------------
-stripe.api_key = st.secrets.get("STRIPE_SECRET_KEY", "sk_test_...")
-publishable_key = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "pk_test_...")
+stripe.api_key = st.secrets.get("STRIPE_SECRET_KEY", "")
+publishable_key = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "")
 
 # ----------------------------------------------------------------------
 # FOLDERS
@@ -49,7 +48,7 @@ users = load_json("users.json", {})
 posts = load_json("posts.json", [])
 
 # ----------------------------------------------------------------------
-# AI Functions — WITH ERROR HANDLING (STEP 3 DONE)
+# AI FUNCTIONS — WITH ERROR HANDLING
 # ----------------------------------------------------------------------
 def generate_hustles(skills):
     try:
@@ -63,8 +62,8 @@ def generate_hustles(skills):
         )
         return resp.choices[0].message.content
     except Exception as e:
-        st.error(f"OpenAI error: {e}. Check your API key in secrets.")
-        return "Error generating ideas. Please try again."
+        st.error(f"OpenAI error: {e}")
+        return "Error generating ideas."
 
 def generate_single_hustle(skills):
     try:
@@ -79,7 +78,7 @@ def generate_single_hustle(skills):
         return resp.choices[0].message.content
     except Exception as e:
         st.error(f"OpenAI error: {e}")
-        return "Error generating idea."
+        return "Error."
 
 def generate_checklist(idea):
     try:
