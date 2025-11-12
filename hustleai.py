@@ -49,55 +49,60 @@ users = load_json("users.json", {})
 posts = load_json("posts.json", [])
 
 # ----------------------------------------------------------------------
-# AI Functions
+# AI Functions — WITH ERROR HANDLING (STEP 3 DONE)
 # ----------------------------------------------------------------------
 def generate_hustles(skills):
-    client = OpenAI(api_key=openai_key)
-    resp = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user",
-                   "content": f"Generate 3 side hustle ideas for someone skilled in {skills}. "
-                              "Each idea must include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) "
-                              "3. 3-step launch plan. Format as numbered list with bold headings."}]
-    )
-    return resp.choices[0].message.content
+    try:
+        client = OpenAI(api_key=openai_key)
+        resp = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user",
+                       "content": f"Generate 3 side hustle ideas for someone skilled in {skills}. "
+                                  "Each idea must include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) "
+                                  "3. 3-step launch plan. Format as numbered list with bold headings."}]
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        st.error(f"OpenAI error: {e}. Check your API key in secrets.")
+        return "Error generating ideas. Please try again."
 
 def generate_single_hustle(skills):
-    client = OpenAI(api_key=openai_key)
-    resp = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user",
-                   "content": f"Generate 1 side hustle idea for someone skilled in {skills}. "
-                              "Include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) "
-                              "3. 3-step launch plan. Format with bold headings."}]
-    )
-    return resp.choices[0].message.content
-
-def extract_skills_from_pdf(pdf_file):
-    text = ""
-    reader = PyPDF2.PdfReader(pdf_file)
-    for page in reader.pages:
-        text += page.extract_text()
-    return text.lower()[:500]
+    try:
+        client = OpenAI(api_key=openai_key)
+        resp = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user",
+                       "content": f"Generate 1 side hustle idea for someone skilled in {skills}. "
+                                  "Include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) "
+                                  "3. 3-step launch plan. Format with bold headings."}]
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        st.error(f"OpenAI error: {e}")
+        return "Error generating idea."
 
 def generate_checklist(idea):
-    client = OpenAI(api_key=openai_key)
-    resp = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user",
-                   "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates "
-                              "(start from today, spread over 1 month). Format as numbered list with editable due dates."}]
-    )
-    txt = resp.choices[0].message.content
-    lines = txt.split('\n')
-    goals = []
-    for line in lines:
-        if line.strip():
-            parts = line.split(' - ')
-            goal = parts[0]
-            due = parts[1] if len(parts) > 1 else (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
-            goals.append({"goal": goal, "due": due})
-    return goals
+    try:
+        client = OpenAI(api_key=openai_key)
+        resp = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user",
+                       "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates "
+                                  "(start from today, spread over 1 month). Format as numbered list with editable due dates."}]
+        )
+        txt = resp.choices[0].message.content
+        lines = txt.split('\n')
+        goals = []
+        for line in lines:
+            if line.strip():
+                parts = line.split(' - ')
+                goal = parts[0]
+                due = parts[1] if len(parts) > 1 else (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
+                goals.append({"goal": goal, "due": due})
+        return goals
+    except Exception as e:
+        st.error(f"OpenAI error: {e}")
+        return []
 
 # ----------------------------------------------------------------------
 # Styling
