@@ -7,11 +7,19 @@ import json
 from datetime import datetime, timedelta
 
 # ----------------------------------------------------------------------
-# KEYS
+# OPENAI KEY - MUST MATCH SECRET NAME EXACTLY
 # ----------------------------------------------------------------------
-openai_key = os.environ.get("OPENAI_API_KEY", "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")
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "sk_test_51SSQ5pH2UAjXIhAZZyMEOZ4vbglq4ACw2quF7dJvmxwvCfKFBRKPI39YZ7bJm8nVj7p0WHPpu0NJ4305bU1KvWEZ00U2NZZV3I")
-publishable_key = os.environ.get("STRIPE_PUBLISHABLE_KEY", "pk_test_51SSQ5pH2UAjXIhAZ6Q3rkbVRySvoUQIbMqPrcE9BInMzgRYixmcicwkDznbhanaAimtRCdinQgdj4ugPNbYWks1k0005xhcC52")
+try:
+    openai_key = st.secrets["OPENAI_API_KEY"]
+except:
+    st.error("OpenAI API key not found in secrets. Add it in Streamlit Cloud → Settings → Secrets")
+    st.stop()
+
+# ----------------------------------------------------------------------
+# STRIPE KEYS
+# ----------------------------------------------------------------------
+stripe.api_key = st.secrets.get("STRIPE_SECRET_KEY", "sk_test_...")
+publishable_key = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "pk_test_...")
 
 # ----------------------------------------------------------------------
 # FOLDERS
@@ -127,7 +135,7 @@ if page == "Home":
     st.title("HustleAI – AI Side Hustle Generator")
     st.write("Upload a resume or type your skills to get personalized ideas!")
 
-    # Load saved resume/skills
+    # Load saved skills
     skills = ""
     if 'user_email' in st.session_state:
         email = st.session_state.user_email
@@ -135,7 +143,7 @@ if page == "Home":
         if os.path.exists(skills_path):
             with open(skills_path, "r", encoding="utf-8") as f:
                 skills = f.read()
-            st.success(f"Welcome back! Skills loaded.")
+            st.success("Skills loaded from your saved resume!")
 
     if st.session_state.free_count >= 3 and not st.session_state.is_pro:
         st.warning("Free limit reached (3 ideas/month). Upgrade for unlimited!")
@@ -318,4 +326,4 @@ elif page == "Monetization":
     st.write("Affiliates: Shopify, Canva links.")
     st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
     if st.button("Upgrade to Pro ($4.99/month)"):
-        pass  # Stripe code
+        pass  # Add Stripe later
