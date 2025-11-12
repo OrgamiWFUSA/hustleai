@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 if "OPENAI_API_KEY" not in st.secrets:
     st.error("OPENAI_API_KEY missing! Add it in Streamlit Cloud → Settings → Secrets")
     st.stop()
-openai_key = st.secrets[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]
+openai_key = st.secrets[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]
 
 # ----------------------------------------------------------------------
 # STRIPE KEYS
