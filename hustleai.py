@@ -2,13 +2,14 @@ import streamlit as st
 from openai import OpenAI
 import PyPDF2
 import stripe
+import os
 
 # Set your OpenAI key here (get free from platform.openai.com/api-keys)
-openai_key = "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"  # Replace with your full key
+openai_key = os.environ.get("OPENAI_API_KEY", "sk-your-api-key-here")  # Replace with your full key
 
 # Set your Stripe keys here (get from dashboard.stripe.com/apikeys)
-stripe.api_key = "sk_test_51SSQ5pH2UAjXIhAZZyMEOZ4vbglq4ACw2quF7dJvmxwvCfKFBRKPI39YZ7bJm8nVj7p0WHPpu0NJ4305bU1KvWEZ00U2NZZV3I"  # Secret key (server-side)
-publishable_key = "pk_test_51SSQ5pH2UAjXIhAZ6Q3rkbVRySvoUQIbMqPrcE9BInMzgRYixmcicwkDznbhanaAimtRCdinQgdj4ugPNbYWks1k0005xhcC52"  # Publishable key (client-side)
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "sk_test_your-secret-key-here")  # Secret key (server-side)
+publishable_key = os.environ.get("STRIPE_PUBLISHABLE_KEY", "pk_test_your-publishable-key-here")  # Publishable key (client-side)
 
 def generate_hustles(skills):
     client = OpenAI(api_key=openai_key)
