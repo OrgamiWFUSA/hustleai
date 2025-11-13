@@ -5,6 +5,7 @@ import stripe
 import os
 import json
 from datetime import datetime, timedelta
+
 # ----------------------------------------------------------------------
 # PAGE CONFIG + ENABLE BACK BUTTON
 # ----------------------------------------------------------------------
@@ -20,6 +21,7 @@ if "logout" in params and params["logout"][0] == "true":
     st.experimental_set_query_params(page="Home")
     st.rerun()
 page = params.get("page", ["Home"])[0]
+
 # ----------------------------------------------------------------------
 # OPENAI KEY - FROM SECRETS ONLY
 # ----------------------------------------------------------------------
@@ -27,11 +29,13 @@ if "OPENAI_API_KEY" not in st.secrets:
     st.error("OPENAI_API_KEY missing! Add it in Streamlit Cloud → Settings → Secrets")
     st.stop()
 openai_key = st.secrets["OPENAI_API_KEY"]
+
 # ----------------------------------------------------------------------
 # STRIPE KEYS
 # ----------------------------------------------------------------------
 stripe.api_key = st.secrets.get("STRIPE_SECRET_KEY", "")
 publishable_key = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "")
+
 # ----------------------------------------------------------------------
 # FOLDERS
 # ----------------------------------------------------------------------
@@ -39,42 +43,46 @@ UPLOAD_DIR = "uploads"
 CHECKLIST_DIR = "checklists"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(CHECKLIST_DIR, exist_ok=True)
+
 def load_json(path, default):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return default
+
 def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+
 users = load_json("users.json", {})
 posts = load_json("posts.json", [])
+
 # ----------------------------------------------------------------------
 # GUEST TRACKING
 # ----------------------------------------------------------------------
 GUESTS_FILE = "guests.json"
 guests = load_json(GUESTS_FILE, {})
+
 def get_ip():
     try:
         return st.context.headers.get("X-Forwarded-For", "unknown").split(',')[0].strip()
     except:
         return "unknown"
+
 if "ip" not in st.session_state:
     st.session_state.ip = get_ip()
+
 # ----------------------------------------------------------------------
 # SKILL EXTRACTION FUNCTION
 # ----------------------------------------------------------------------
 def extract_skills_from_pdf(uploaded_file):
-    # Extract all text from the PDF
     reader = PyPDF2.PdfReader(uploaded_file)
     text = ""
     for page in reader.pages:
         text += page.extract_text() + "\n"
     
-    # Convert text to lowercase for case-insensitive matching
     text_lower = text.lower()
     
-    # List of common skills (compiled from resume best practices)
     common_skills = [
         "active listening", "communication", "computer skills", "customer service",
         "interpersonal skills", "leadership", "management", "problem-solving",
@@ -93,13 +101,11 @@ def extract_skills_from_pdf(uploaded_file):
         "networking", "multitasking", "initiative", "reliability", "work ethic"
     ]
     
-    # Find matching skills in the text
     extracted_skills = [skill for skill in common_skills if skill.lower() in text_lower]
-    
-    # Remove duplicates and sort
     extracted_skills = sorted(set(extracted_skills))
     
     return ', '.join(extracted_skills)
+
 # ----------------------------------------------------------------------
 # AI FUNCTIONS — WITH LOCATION SUPPORT
 # ----------------------------------------------------------------------
@@ -139,6 +145,7 @@ def generate_hustles(skills, location=""):
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return "Error generating ideas."
+
 def generate_single_hustle(skills, location=""):
     location_prompt = f"in or near {location}" if location else "anywhere"
     try:
@@ -175,6 +182,7 @@ def generate_single_hustle(skills, location=""):
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return "Error."
+
 def generate_checklist(idea):
     try:
         client = OpenAI(api_key=openai_key)
@@ -192,11 +200,9 @@ def generate_checklist(idea):
                     goal = parts[0].strip()
                     due_str = parts[1].strip()
                     try:
-                        # Validate and parse the date
                         due_date = datetime.strptime(due_str, '%Y-%m-%d')
                         goals.append({"goal": goal, "due": due_date.strftime('%Y-%m-%d')})
                     except ValueError:
-                        # If invalid, use default
                         goals.append({"goal": goal, "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
                 else:
                     goals.append({"goal": line.strip(), "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
@@ -204,6 +210,7 @@ def generate_checklist(idea):
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return []
+
 # ----------------------------------------------------------------------
 # BEAUTIFUL DESIGN + LOGO + TOP HEADER
 # ----------------------------------------------------------------------
@@ -241,8 +248,8 @@ if 'user_email' in st.session_state:
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
-    <a href="?page=Login" target="_self">Log In</a>
-    <a href="?page=Signup" target="_self">Sign Up</a>
+    <a href='#' onclick='window.location.href=\"?page=Login\"' target='_self'>Log In</a>
+    <a href='#' onclick='window.location.href=\"?page=Signup\"' target='_self'>Sign Up</a>
     """, unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
@@ -264,6 +271,9 @@ pages_nav = {
     "Monetization": "Upgrade to Pro",
     "Settings": "Settings"
 }
+if 'user_email' not in st.session_state:
+    pages_nav["Login"] = "Login"
+    pages_nav["Signup"] = "Signup"
 nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()))
 if nav_col != page:
     st.experimental_set_query_params(page=nav_col)
