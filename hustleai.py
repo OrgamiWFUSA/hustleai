@@ -195,7 +195,7 @@ def generate_checklist(idea):
         st.error(f"OpenAI error: {e}")
         return []
 # ----------------------------------------------------------------------
-# BEAUTIFUL DESIGN + LOGO
+# BEAUTIFUL DESIGN + LOGO + TOP HEADER
 # ----------------------------------------------------------------------
 st.markdown("""
 <style>
@@ -209,8 +209,40 @@ st.markdown("""
     .stFileUploader>div>div {border-radius: 12px; border: 2px dashed #42a5f5; padding: 1rem;}
     .idea-card {background:white; padding:2rem; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.15); text-align:left; margin:1.5rem 0; border-left: 6px solid #42a5f5; font-family: Arial, sans-serif;}
     .idea-card h2 {text-align: center; font-weight: bold;}
+    .header {background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: flex-end; align-items: center;}
+    .header a {color: white; margin: 0 10px; text-decoration: none;}
+    .header button {background: none; border: none; color: white; cursor: pointer;}
 </style>
 """, unsafe_allow_html=True)
+
+# Top Header
+st.markdown("""
+<div class="header">
+    <a href="#">Email Preferences</a>
+    <a href="#">Help Center</a>
+    <a href="#">Ticket Check</a> |
+""", unsafe_allow_html=True)
+
+if 'user_email' in st.session_state:
+    st.markdown(f"""
+    <span>{st.session_state.username}</span>
+    <button onclick="location.href='/Settings'">Settings</button>
+    <button onclick="logout()">Log Out</button>
+    """, unsafe_allow_html=True)
+    if st.button("Log Out", key="logout_button"):
+        del st.session_state.user_email
+        del st.session_state.username
+        del st.session_state.free_count
+        del st.session_state.is_pro
+        st.rerun()
+else:
+    st.markdown("""
+    <button onclick="location.href='/Login'">Log In</button>
+    <button onclick="location.href='/Signup'">Sign Up</button>
+    """, unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
+
 # Logo
 try:
     st.image("logo.png", use_column_width=False, width=180)
@@ -218,22 +250,6 @@ except:
     pass
 st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Turn your skills into side income — anywhere.</p>", unsafe_allow_html=True)
-# ----------------------------------------------------------------------
-# Header with Login/Logout
-# ----------------------------------------------------------------------
-col1, col2, col3 = st.columns([1, 1, 1])
-with col3:
-    if 'user_email' in st.session_state:
-        st.write(f"Logged in as: {st.session_state.username}")
-        if st.button("Logout"):
-            del st.session_state.user_email
-            del st.session_state.username
-            del st.session_state.free_count
-            del st.session_state.is_pro
-            st.rerun()
-    else:
-        if st.button("Login"):
-            st.switch_page("pages/Login.py")  # Assuming Login is a separate page, adjust if needed
 # ----------------------------------------------------------------------
 # Navigation
 # ----------------------------------------------------------------------
