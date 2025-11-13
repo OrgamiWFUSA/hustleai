@@ -5,7 +5,6 @@ import stripe
 import os
 import json
 from datetime import datetime, timedelta
-
 # ----------------------------------------------------------------------
 # OPENAI KEY - FROM SECRETS ONLY
 # ----------------------------------------------------------------------
@@ -13,13 +12,11 @@ if "OPENAI_API_KEY" not in st.secrets:
     st.error("OPENAI_API_KEY missing! Add it in Streamlit Cloud → Settings → Secrets")
     st.stop()
 openai_key = st.secrets["OPENAI_API_KEY"]
-
 # ----------------------------------------------------------------------
 # STRIPE KEYS
 # ----------------------------------------------------------------------
 stripe.api_key = st.secrets.get("STRIPE_SECRET_KEY", "")
 publishable_key = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "")
-
 # ----------------------------------------------------------------------
 # FOLDERS
 # ----------------------------------------------------------------------
@@ -27,35 +24,67 @@ UPLOAD_DIR = "uploads"
 CHECKLIST_DIR = "checklists"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(CHECKLIST_DIR, exist_ok=True)
-
 def load_json(path, default):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return default
-
 def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-
 users = load_json("users.json", {})
 posts = load_json("posts.json", [])
-
 # ----------------------------------------------------------------------
 # GUEST TRACKING
 # ----------------------------------------------------------------------
 GUESTS_FILE = "guests.json"
 guests = load_json(GUESTS_FILE, {})
-
 def get_ip():
     try:
         return st.context.headers.get("X-Forwarded-For", "unknown").split(',')[0].strip()
     except:
         return "unknown"
-
 if "ip" not in st.session_state:
     st.session_state.ip = get_ip()
-
+# ----------------------------------------------------------------------
+# SKILL EXTRACTION FUNCTION
+# ----------------------------------------------------------------------
+def extract_skills_from_pdf(uploaded_file):
+    # Extract all text from the PDF
+    reader = PyPDF2.PdfReader(uploaded_file)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() + "\n"
+    
+    # Convert text to lowercase for case-insensitive matching
+    text_lower = text.lower()
+    
+    # List of common skills (compiled from resume best practices)
+    common_skills = [
+        "active listening", "communication", "computer skills", "customer service",
+        "interpersonal skills", "leadership", "management", "problem-solving",
+        "time management", "transferable skills", "verbal communication",
+        "nonverbal communication", "written communication", "empathy",
+        "emotional intelligence", "collaboration", "teamwork", "presentation skills",
+        "negotiation", "conflict resolution", "adaptability", "creativity",
+        "critical thinking", "organization", "attention to detail", "project management",
+        "data analysis", "microsoft office", "excel", "powerpoint", "word",
+        "google workspace", "programming", "python", "java", "sql", "javascript",
+        "html", "css", "machine learning", "ai", "data science", "web development",
+        "graphic design", "adobe creative suite", "photoshop", "illustrator",
+        "sales", "marketing", "seo", "content creation", "social media management",
+        "public speaking", "research", "analytical skills", "budgeting",
+        "financial analysis", "accounting", "crm software", "salesforce",
+        "networking", "multitasking", "initiative", "reliability", "work ethic"
+    ]
+    
+    # Find matching skills in the text
+    extracted_skills = [skill for skill in common_skills if skill.lower() in text_lower]
+    
+    # Remove duplicates and sort
+    extracted_skills = sorted(set(extracted_skills))
+    
+    return ', '.join(extracted_skills)
 # ----------------------------------------------------------------------
 # AI FUNCTIONS — WITH LOCATION SUPPORT
 # ----------------------------------------------------------------------
@@ -73,7 +102,6 @@ def generate_hustles(skills, location=""):
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return "Error generating ideas."
-
 def generate_single_hustle(skills, location=""):
     location_prompt = f"in or near {location}" if location else "anywhere"
     try:
@@ -87,7 +115,6 @@ def generate_single_hustle(skills, location=""):
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return "Error."
-
 def generate_checklist(idea):
     try:
         client = OpenAI(api_key=openai_key)
@@ -108,12 +135,10 @@ def generate_checklist(idea):
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return []
-
 # ----------------------------------------------------------------------
 # BEAUTIFUL DESIGN + LOGO
 # ----------------------------------------------------------------------
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered")
-
 st.markdown("""
 <style>
     .main {background: linear-gradient(135deg, #e0f7fa, #ffffff); padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);}
@@ -127,7 +152,6 @@ st.markdown("""
     .idea-card {background:white; padding:2rem; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.15); text-align:left; margin:1.5rem 0; border-left: 6px solid #42a5f5;}
 </style>
 """, unsafe_allow_html=True)
-
 # Logo
 try:
     st.image("logo.png", use_column_width=False, width=180)
@@ -135,7 +159,6 @@ except:
     pass
 st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Turn your skills into side income — anywhere.</p>", unsafe_allow_html=True)
-
 # ----------------------------------------------------------------------
 # Navigation
 # ----------------------------------------------------------------------
@@ -147,10 +170,8 @@ pages = {
     "Monetization": "Upgrade to Pro"
 }
 page = st.sidebar.selectbox("Navigate", list(pages.keys()))
-
 if 'free_count' not in st.session_state: st.session_state.free_count = 0
 if 'is_pro' not in st.session_state: st.session_state.is_pro = False
-
 # ----------------------------------------------------------------------
 # Home – WITH LOCATION + CLEAN CARDS
 # ----------------------------------------------------------------------
@@ -161,7 +182,6 @@ if page == "Home":
         if guests.get(ip, 0) >= 3:
             st.warning("Free limit reached (3 ideas). Sign up to continue!")
             st.stop()
-
     # Load saved skills
     skills = ""
     if 'user_email' in st.session_state:
@@ -171,7 +191,6 @@ if page == "Home":
             with open(skills_path, "r", encoding="utf-8") as f:
                 skills = f.read()
             st.success("Skills loaded from your saved resume!")
-
     if st.session_state.free_count >= 3 and not st.session_state.is_pro:
         st.warning("Free limit reached (3 ideas/month). Upgrade for unlimited!")
         st.info("Pro: $4.99/month – unlimited ideas, priority AI, exclusive templates.")
@@ -179,7 +198,6 @@ if page == "Home":
         uploaded_file = st.file_uploader("Upload resume (TXT/PDF)", type=['txt', 'pdf'])
         skills_input = st.text_input("Your skills (e.g., video editing, Spanish, cooking):", value=skills)
         location = st.text_input("Your city or country (optional, for local ideas):", placeholder="e.g., Miami, USA or Remote")
-
         if uploaded_file:
             if 'user_email' not in st.session_state:
                 st.error("Sign in to save resume.")
@@ -197,10 +215,8 @@ if page == "Home":
                 with open(skills_path, "w", encoding="utf-8") as f:
                     f.write(extracted)
                 st.success("Resume + skills saved!")
-
         final_skills = skills_input or (extracted if 'extracted' in locals() else "")
         final_location = location.strip()
-
         if st.button("Generate My Hustles"):
             if final_skills:
                 with st.spinner("Generating personalized ideas..."):
@@ -209,7 +225,6 @@ if page == "Home":
                 st.session_state.idea_index = 0
                 st.session_state.liked_idea = None
                 st.success("Ideas ready! Swipe to explore.")
-
                 # Update free count
                 if 'user_email' in st.session_state:
                     email = st.session_state.user_email
@@ -222,21 +237,17 @@ if page == "Home":
                     save_json(GUESTS_FILE, guests)
             else:
                 st.warning("Enter skills or upload a resume first.")
-
         # CLEAN SWIPE CARDS
         if 'ideas_list' in st.session_state and st.session_state.ideas_list:
             ideas_list = st.session_state.ideas_list
             index = st.session_state.idea_index
-
             if index < len(ideas_list):
                 idea_text = ideas_list[index]
-
                 st.markdown(f"""
                 <div class="idea-card">
                     {idea_text.replace('**', '<b>').replace('**', '</b>')}
                 </div>
                 """, unsafe_allow_html=True)
-
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col1:
                     if st.button("👎 Dislike", key=f"dislike_{index}"):
@@ -253,7 +264,6 @@ if page == "Home":
                             guests[ip] = guests.get(ip, 0) + 1
                             save_json(GUESTS_FILE, guests)
                         st.rerun()
-
                 with col3:
                     if st.button("❤️ Like", key=f"like_{index}"):
                         st.session_state.liked_idea = idea_text
@@ -265,10 +275,8 @@ if page == "Home":
                             st.success("Saved to your Checklist!")
                         st.session_state.idea_index += 1
                         st.rerun()
-
             else:
                 st.success("You've seen all ideas! Generate more or upgrade.")
-
 # ----------------------------------------------------------------------
 # Login
 # ----------------------------------------------------------------------
@@ -288,7 +296,6 @@ elif page == "Login":
     st.write("New user?")
     if st.button("Sign Up Here"):
         st.switch_page("pages/_signup.py")
-
 # ----------------------------------------------------------------------
 # Community
 # ----------------------------------------------------------------------
@@ -311,7 +318,6 @@ elif page == "Community":
                 save_json("posts.json", posts)
                 st.success("Posted!")
                 st.rerun()
-
     st.subheader("Recent Posts")
     for i, post in enumerate(posts[::-1]):
         with st.expander(f"**{post['title']}** by {post['username']}"):
@@ -329,7 +335,7 @@ elif page == "Community":
                     st.rerun()
             def render(replies, depth=1, pkey=""):
                 for j, r in enumerate(replies):
-                    indent = "  " * depth
+                    indent = " " * depth
                     with st.expander(f"{indent}↳ **{r['username']}**"):
                         st.write(r["content"])
                         sub = st.text_area("Reply", key=f"r_{pkey}_{i}_{j}")
@@ -345,7 +351,6 @@ elif page == "Community":
                                 st.rerun()
                         render(r["replies"], depth + 1, f"{pkey}_{i}_{j}")
             render(post["replies"])
-
 # ----------------------------------------------------------------------
 # Checklist
 # ----------------------------------------------------------------------
@@ -373,7 +378,6 @@ elif page == "Checklist":
             st.info("No checklist yet – generate ideas and swipe right on one.")
     else:
         st.warning("Sign in to view your checklist.")
-
 # ----------------------------------------------------------------------
 # Monetization
 # ----------------------------------------------------------------------
@@ -383,4 +387,4 @@ elif page == "Monetization":
     st.write("Affiliates: Shopify, Canva links.")
     st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
     if st.button("Upgrade to Pro ($4.99/month)"):
-        pass  # Add Stripe later
+        pass # Add Stripe later
