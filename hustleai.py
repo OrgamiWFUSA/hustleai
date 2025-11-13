@@ -263,7 +263,10 @@ pages_nav = {
     "Monetization": "Upgrade to Pro",
     "Settings": "Settings"
 }
-nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()))
+if 'user_email' not in st.session_state:
+    pages_nav["Login"] = "Login"
+    pages_nav["Signup"] = "Signup"
+nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()), key="nav_select")
 if nav_col != page:
     st.experimental_set_query_params(page=nav_col)
     st.rerun()
