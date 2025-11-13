@@ -7,12 +7,6 @@ import json
 from datetime import datetime, timedelta
 
 # ----------------------------------------------------------------------
-# PAGE CONFIG + ENABLE BACK BUTTON
-# ----------------------------------------------------------------------
-st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered", initial_sidebar_state="expanded")
-st.experimental_set_query_params(**st.experimental_get_query_params())
-
-# ----------------------------------------------------------------------
 # OPENAI KEY - FROM SECRETS ONLY
 # ----------------------------------------------------------------------
 if "OPENAI_API_KEY" not in st.secrets:
@@ -34,6 +28,9 @@ CHECKLIST_DIR = "checklists"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(CHECKLIST_DIR, exist_ok=True)
 
+# ----------------------------------------------------------------------
+# JSON HELPERS
+# ----------------------------------------------------------------------
 def load_json(path, default):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
@@ -44,11 +41,14 @@ def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
+# ----------------------------------------------------------------------
+# LOAD DATA ON EVERY RUN
+# ----------------------------------------------------------------------
 users = load_json("users.json", {})
 posts = load_json("posts.json", [])
 
 # ----------------------------------------------------------------------
-# GUEST TRACKING
+# GUEST TRACKING (IP-based)
 # ----------------------------------------------------------------------
 GUESTS_FILE = "guests.json"
 guests = load_json(GUESTS_FILE, {})
@@ -63,7 +63,7 @@ if "ip" not in st.session_state:
     st.session_state.ip = get_ip()
 
 # ----------------------------------------------------------------------
-# AI FUNCTIONS
+# AI FUNCTIONS — WITH ERROR HANDLING
 # ----------------------------------------------------------------------
 def generate_hustles(skills):
     try:
@@ -111,86 +111,30 @@ def generate_checklist(idea):
         return []
 
 # ----------------------------------------------------------------------
-# BEAUTIFUL DESIGN
+# BEAUTIFUL DESIGN + LOGO
 # ----------------------------------------------------------------------
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered")
 
 st.markdown("""
 <style>
-    .main {
-        background: linear-gradient(135deg, #e0f7fa, #ffffff);
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    .logo {
-        display: block;
-        margin: 0 auto 1rem auto;
-        max-width: 180px;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    .title {
-        font-size: 2.8rem;
-        font-weight: 700;
-        text-align: center;
-        color: #1565c0;
-        margin-bottom: 0.5rem;
-    }
-    .subtitle {
-        text-align: center;
-        color: #555;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
-    }
-    .stButton>button {
-        background: linear-gradient(45deg, #42a5f5, #1976d2);
-        color: white;
-        border: none;
-        padding: 0.6rem 1.5rem;
-        border-radius: 25px;
-        font-weight: 600;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-        transition: all 0.3s;
-    }
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-    }
-    .stTextInput>div>div>input {
-        border-radius: 12px;
-        border: 1px solid #90caf9;
-        padding: 0.8rem;
-    }
-    .stFileUploader>div>div {
-        border-radius: 12px;
-        border: 2px dashed #42a5f5;
-        padding: 1rem;
-    }
-    .stExpander {
-        background: white;
-        border-radius: 12px;
-        border: 1px solid #bbdefb;
-        margin-bottom: 1rem;
-    }
-    .stSuccess {
-        background: #e8f5e8;
-        color: #2e7d32;
-        border-radius: 12px;
-        padding: 0.8rem;
-    }
-    .stWarning {
-        background: #fff3e0;
-        color: #f57c00;
-        border-radius: 12px;
-        padding: 0.8rem;
-    }
+    .main {background: linear-gradient(135deg, #e0f7fa, #ffffff); padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);}
+    .logo {display: block; margin: 0 auto 1rem auto; max-width: 180px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
+    .title {font-size: 2.8rem; font-weight: 700; text-align: center; color: #1565c0; margin-bottom: 0.5rem;}
+    .subtitle {text-align: center; color: #555; font-size: 1.1rem; margin-bottom: 2rem;}
+    .stButton>button {background: linear-gradient(45deg, #42a5f5, #1976d2); color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 25px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,0.2); transition: all 0.3s;}
+    .stButton>button:hover {transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3);}
+    .stTextInput>div>div>input {border-radius: 12px; border: 1px solid #90caf9; padding: 0.8rem;}
+    .stFileUploader>div>div {border-radius: 12px; border: 2px dashed #42a5f5; padding: 1rem;}
+    .stExpander {background: white; border-radius: 12px; border: 1px solid #bbdefb; margin-bottom: 1rem;}
+    .stSuccess {background: #e8f5e8; color: #2e7d32; border-radius: 12px; padding: 0.8rem;}
+    .stWarning {background: #fff3e0; color: #f57c00; border-radius: 12px; padding: 0.8rem;}
+    .idea-card {background:white; padding:2rem; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); text-align:center; margin:1rem 0;}
 </style>
 """, unsafe_allow_html=True)
 
 # Logo
 try:
-    st.image("logo.png", use_column_width=False, width=180, output_format="PNG")
+    st.image("logo.png", use_column_width=False, width=180)
 except:
     st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
 else:
@@ -214,7 +158,7 @@ if 'free_count' not in st.session_state: st.session_state.free_count = 0
 if 'is_pro' not in st.session_state: st.session_state.is_pro = False
 
 # ----------------------------------------------------------------------
-# Home
+# Home – generator + swipe + RESUME SAVED PER USER
 # ----------------------------------------------------------------------
 if page == "Home":
     # GUEST LIMIT
@@ -241,6 +185,7 @@ if page == "Home":
         uploaded_file = st.file_uploader("Upload resume (TXT/PDF)", type=['txt', 'pdf'])
         skills_input = st.text_input("Or enter skills manually:", value=skills)
 
+        # SAVE RESUME + SKILLS
         if uploaded_file:
             if 'user_email' not in st.session_state:
                 st.error("Sign in to save resume.")
@@ -250,6 +195,7 @@ if page == "Home":
                 file_path = os.path.join(UPLOAD_DIR, f"{email}_resume.{ext}")
                 with open(file_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
+                # Extract skills
                 if uploaded_file.type == "text/plain":
                     extracted = uploaded_file.read().decode("utf-8")
                 else:
@@ -269,7 +215,7 @@ if page == "Home":
                 st.session_state.liked_idea = None
                 st.success("Ideas ready! Swipe left/right.")
 
-                # INCREMENT FREE COUNT
+                # Update free count
                 if 'user_email' in st.session_state:
                     email = st.session_state.user_email
                     users[email]["free_count"] = users[email].get("free_count", 0) + 1
@@ -282,39 +228,51 @@ if page == "Home":
             else:
                 st.warning("Enter skills or upload a resume first.")
 
+        # FAST MOBILE SWIPE
         if 'ideas_list' in st.session_state:
-            lst = st.session_state.ideas_list
-            idx = st.session_state.idea_index
-            if idx < len(lst):
-                st.subheader(f"Idea {idx+1}")
-                st.write(lst[idx])
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("Swipe Left (Dislike)"):
-                        new = generate_single_hustle(final_skills)
-                        st.session_state.ideas_list[idx] = new
-                        st.success("New idea generated!")
+            ideas_list = st.session_state.ideas_list
+            index = st.session_state.idea_index
+            if index < len(ideas_list):
+                idea = ideas_list[index]
+
+                st.markdown(f"""
+                <div class="idea-card">
+                    <h2>Idea {index + 1}</h2>
+                    <div style="font-size:1.1rem;line-height:1.8;">{idea.replace('**', '<b>').replace('**', '</b>')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col1:
+                    if st.button("👎 Dislike", key=f"dislike_{index}"):
+                        new_idea = generate_single_hustle(final_skills)
+                        st.session_state.ideas_list[index] = new_idea
+                        st.session_state.idea_index += 1
+                        # Update free count
                         if 'user_email' in st.session_state:
                             email = st.session_state.user_email
                             users[email]["free_count"] = users[email].get("free_count", 0) + 1
                             save_json("users.json", users)
-                            st.session_state.free_count = users[email]["free_count"]
                         else:
                             ip = get_ip()
                             guests[ip] = guests.get(ip, 0) + 1
                             save_json(GUESTS_FILE, guests)
-                with c2:
-                    if st.button("Swipe Right (Like)"):
-                        st.session_state.liked_idea = lst[idx]
+                        st.rerun()
+
+                with col3:
+                    if st.button("❤️ Like", key=f"like_{index}"):
+                        st.session_state.liked_idea = idea
                         if 'user_email' in st.session_state:
                             email = st.session_state.user_email
                             path = os.path.join(CHECKLIST_DIR, f"{email}.json")
-                            data = {"idea": lst[idx], "checklist": generate_checklist(lst[idx])}
+                            data = {"idea": idea, "checklist": generate_checklist(idea)}
                             save_json(path, data)
-                            st.success("Checklist saved!")
-                        st.success("Liked! See the Checklist page.")
+                            st.success("Saved to your Checklist!")
+                        st.session_state.idea_index += 1
+                        st.rerun()
+
             else:
-                st.info("No more ideas – generate a new batch or upgrade for more.")
+                st.success("You've seen all ideas! Generate more or upgrade.")
 
 # ----------------------------------------------------------------------
 # Login
@@ -337,7 +295,7 @@ elif page == "Login":
         st.switch_page("pages/_signup.py")
 
 # ----------------------------------------------------------------------
-# Community
+# Community – nested replies
 # ----------------------------------------------------------------------
 elif page == "Community":
     st.title("Community Forum: Share Your Wins!")
@@ -398,9 +356,7 @@ elif page == "Community":
 # ----------------------------------------------------------------------
 elif page == "Checklist":
     st.title("My Checklist")
-    if 'user_email' not in st.session_state:
-        st.warning("Sign in to view your checklist.")
-    else:
+    if 'user_email' in st.session_state:
         email = st.session_state.user_email
         path = os.path.join(CHECKLIST_DIR, f"{email}.json")
         if os.path.exists(path):
@@ -420,6 +376,8 @@ elif page == "Checklist":
                 st.success("Checklist updated!")
         else:
             st.info("No checklist yet – generate ideas and swipe right on one.")
+    else:
+        st.warning("Sign in to view your checklist.")
 
 # ----------------------------------------------------------------------
 # Monetization
