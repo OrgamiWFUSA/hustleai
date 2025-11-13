@@ -559,4 +559,4 @@ elif page == "Settings":
             else:
                 st.error("Current password is incorrect.")
     else:
-        st.warning("Sign in to access settings.")                         "2. 
+        st.warning("Sign in to access settings.")
