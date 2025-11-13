@@ -219,14 +219,30 @@ except:
 st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Turn your skills into side income — anywhere.</p>", unsafe_allow_html=True)
 # ----------------------------------------------------------------------
+# Header with Login/Logout
+# ----------------------------------------------------------------------
+col1, col2, col3 = st.columns([1, 1, 1])
+with col3:
+    if 'user_email' in st.session_state:
+        st.write(f"Logged in as: {st.session_state.username}")
+        if st.button("Logout"):
+            del st.session_state.user_email
+            del st.session_state.username
+            del st.session_state.free_count
+            del st.session_state.is_pro
+            st.rerun()
+    else:
+        if st.button("Login"):
+            st.switch_page("pages/Login.py")  # Assuming Login is a separate page, adjust if needed
+# ----------------------------------------------------------------------
 # Navigation
 # ----------------------------------------------------------------------
 pages = {
     "Home": "Generate Hustles",
-    "Login": "Sign In",
     "Checklist": "My Checklist",
     "Community": "Community Forum",
-    "Monetization": "Upgrade to Pro"
+    "Monetization": "Upgrade to Pro",
+    "Settings": "Settings"
 }
 page = st.sidebar.selectbox("Navigate", list(pages.keys()))
 if 'free_count' not in st.session_state: st.session_state.free_count = 0
@@ -332,36 +348,18 @@ if page == "Home":
                         st.rerun()
                 with col3:
                     if st.button("❤️ Like", key=f"like_{index}"):
-                        st.session_state.liked_idea = idea_text
                         if 'user_email' in st.session_state:
                             email = st.session_state.user_email
                             path = os.path.join(CHECKLIST_DIR, f"{email}.json")
-                            data = {"idea": idea_text, "checklist": generate_checklist(idea_text)}
+                            data = load_json(path, [])
+                            new_entry = {"idea": idea_text, "checklist": generate_checklist(idea_text)}
+                            data.append(new_entry)
                             save_json(path, data)
                             st.success("Saved to your Checklist!")
                         st.session_state.idea_index += 1
                         st.rerun()
             else:
                 st.success("You've seen all ideas! Generate more or upgrade.")
-# ----------------------------------------------------------------------
-# Login
-# ----------------------------------------------------------------------
-elif page == "Login":
-    st.title("Sign In to HustleAI")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-    if st.button("Sign In"):
-        if email in users and users[email]["password"] == password:
-            st.session_state.user_email = email
-            st.session_state.username = users[email]["username"]
-            st.session_state.free_count = users[email].get("free_count", 0)
-            st.session_state.is_pro = users[email].get("is_pro", False)
-            st.success(f"Signed in as {st.session_state.username}!")
-        else:
-            st.error("Invalid email or password.")
-    st.write("New user?")
-    if st.button("Sign Up Here"):
-        st.switch_page("pages/_signup.py")
 # ----------------------------------------------------------------------
 # Community
 # ----------------------------------------------------------------------
@@ -421,33 +419,35 @@ elif page == "Community":
 # Checklist
 # ----------------------------------------------------------------------
 elif page == "Checklist":
-    st.title("My Checklist")
+    st.title("My Checklists")
     if 'user_email' in st.session_state:
         email = st.session_state.user_email
         path = os.path.join(CHECKLIST_DIR, f"{email}.json")
         if os.path.exists(path):
-            data = load_json(path, {})
-            st.subheader("Your Liked Hustle")
-            st.write(data["idea"])
-            st.subheader("Checklist")
-            checklist = data.get("checklist", [])
-            for i, item in enumerate(checklist):
-                c1, c2 = st.columns([3,1])
-                with c1: st.write(item["goal"])
-                with c2:
-                    try:
-                        due_value = datetime.strptime(item["due"], '%Y-%m-%d')
-                    except ValueError:
-                        due_value = datetime.now() + timedelta(days=7)
-                    new_date = st.date_input("Due", value=due_value, key=f"due_{i}")
-                    checklist[i]["due"] = new_date.strftime('%Y-%m-%d')
+            data = load_json(path, [])
+            for idx, entry in enumerate(data):
+                with st.expander(f"Liked Idea {idx+1}: {entry['idea'].splitlines()[0]}"):
+                    st.subheader("Your Liked Hustle")
+                    st.write(entry["idea"])
+                    st.subheader("Checklist")
+                    checklist = entry.get("checklist", [])
+                    for i, item in enumerate(checklist):
+                        c1, c2 = st.columns([3,1])
+                        with c1: st.write(item["goal"])
+                        with c2:
+                            try:
+                                due_value = datetime.strptime(item["due"], '%Y-%m-%d')
+                            except ValueError:
+                                due_value = datetime.now() + timedelta(days=7)
+                            new_date = st.date_input("Due", value=due_value, key=f"due_{idx}_{i}")
+                            checklist[i]["due"] = new_date.strftime('%Y-%m-%d')
             if st.button("Save Changes"):
-                save_json(path, {"idea": data["idea"], "checklist": checklist})
-                st.success("Checklist updated!")
+                save_json(path, data)
+                st.success("Checklists updated!")
         else:
-            st.info("No checklist yet – generate ideas and swipe right on one.")
+            st.info("No checklists yet – generate ideas and swipe right on one.")
     else:
-        st.warning("Sign in to view your checklist.")
+        st.warning("Sign in to view your checklists.")
 # ----------------------------------------------------------------------
 # Monetization
 # ----------------------------------------------------------------------
@@ -458,3 +458,33 @@ elif page == "Monetization":
     st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
     if st.button("Upgrade to Pro ($4.99/month)"):
         pass # Add Stripe later
+# ----------------------------------------------------------------------
+# Settings
+# ----------------------------------------------------------------------
+elif page == "Settings":
+    st.title("Settings")
+    if 'user_email' in st.session_state:
+        email = st.session_state.user_email
+        st.subheader("Account Information")
+        st.write(f"Username: {st.session_state.username}")
+        st.write(f"Email: {email}")
+        st.write(f"Subscription: {'Pro' if st.session_state.is_pro else 'Free'}")
+        # Assuming no expiration date, add if needed
+        # st.write(f"Subscription expires: {users[email].get('subscription_expiry', 'N/A')}")
+        
+        st.subheader("Change Password")
+        current_password = st.text_input("Current Password", type="password")
+        new_password = st.text_input("New Password", type="password")
+        confirm_password = st.text_input("Confirm New Password", type="password")
+        if st.button("Update Password"):
+            if current_password == users[email]["password"]:
+                if new_password == confirm_password and new_password:
+                    users[email]["password"] = new_password
+                    save_json("users.json", users)
+                    st.success("Password updated!")
+                else:
+                    st.error("New passwords do not match or are empty.")
+            else:
+                st.error("Current password is incorrect.")
+    else:
+        st.warning("Sign in to access settings.")
