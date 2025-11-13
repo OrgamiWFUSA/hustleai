@@ -98,10 +98,32 @@ def generate_hustles(skills, location=""):
     try:
         client = OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": f"Generate 3 side hustle ideas for someone skilled in {skills}, {location_prompt}. "
-                                                  "For each idea: 1. Bold and centered title (use **Title** for bold) 2. Estimated startup cost (under $100) 3. First month earnings potential ($100-$1000) 4. 3-5 bullet points explaining the idea 5. 3-step launch plan. "
-                                                  "Format cleanly for mobile viewing, all in the same font."}]
+                                                  "For each idea, provide the full complete response in this exact format (do not output partial responses):\n"
+                                                  "**Idea Title**\n"
+                                                  "Estimated startup cost: $X (under $100)\n"
+                                                  "First month earnings potential: $Y-$Z ($100-$1000)\n"
+                                                  "- Bullet point 1 explaining the idea\n"
+                                                  "- Bullet point 2\n"
+                                                  "- Bullet point 3\n"
+                                                  "- Bullet point 4 (optional)\n"
+                                                  "- Bullet point 5 (optional)\n"
+                                                  "3-step launch plan:\n"
+                                                  "1. Step 1\n"
+                                                  "2. Step 2\n"
+                                                  "3. Step 3\n\n"
+                                                  "Example:\n"
+                                                  "**Freelance Graphic Design Services**\n"
+                                                  "Estimated startup cost: $50\n"
+                                                  "First month earnings potential: $300-$800\n"
+                                                  "- Leverage your graphic design skills to create logos, banners, and social media graphics for small businesses.\n"
+                                                  "- Target local startups or online entrepreneurs who need affordable design work.\n"
+                                                  "- Use free tools like Canva initially, upgrading as needed.\n"
+                                                  "3-step launch plan:\n"
+                                                  "1. Build a simple portfolio on a free site like Behance.\n"
+                                                  "2. Post services on freelance platforms like Upwork or Fiverr.\n"
+                                                  "3. Network on social media and reach out to potential clients."}]
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -112,9 +134,32 @@ def generate_single_hustle(skills, location=""):
     try:
         client = OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": f"Generate 1 new side hustle idea for someone skilled in {skills}, {location_prompt}. "
-                                                  "Include: Bold and centered title (use **Title** for bold) + Estimated startup cost (under $100) + First month earnings potential ($100-$1000) + 3-5 bullet points explaining the idea + 3-step launch plan."}]
+                                                  "Provide the full complete response in this exact format (do not output partial responses):\n"
+                                                  "**Idea Title**\n"
+                                                  "Estimated startup cost: $X (under $100)\n"
+                                                  "First month earnings potential: $Y-$Z ($100-$1000)\n"
+                                                  "- Bullet point 1 explaining the idea\n"
+                                                  "- Bullet point 2\n"
+                                                  "- Bullet point 3\n"
+                                                  "- Bullet point 4 (optional)\n"
+                                                  "- Bullet point 5 (optional)\n"
+                                                  "3-step launch plan:\n"
+                                                  "1. Step 1\n"
+                                                  "2. Step 2\n"
+                                                  "3. Step 3\n"
+                                                  "Example:\n"
+                                                  "**Freelance Graphic Design Services**\n"
+                                                  "Estimated startup cost: $50\n"
+                                                  "First month earnings potential: $300-$800\n"
+                                                  "- Leverage your graphic design skills to create logos, banners, and social media graphics for small businesses.\n"
+                                                  "- Target local startups or online entrepreneurs who need affordable design work.\n"
+                                                  "- Use free tools like Canva initially, upgrading as needed.\n"
+                                                  "3-step launch plan:\n"
+                                                  "1. Build a simple portfolio on a free site like Behance.\n"
+                                                  "2. Post services on freelance platforms like Upwork or Fiverr.\n"
+                                                  "3. Network on social media and reach out to potential clients."}]
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -124,7 +169,7 @@ def generate_checklist(idea):
     try:
         client = OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format as numbered list with editable due dates."}]
         )
         txt = response.choices[0].message.content
@@ -256,7 +301,7 @@ if page == "Home":
                 st.markdown(f"""
                 <div class="idea-card">
                     <h2>{idea_text.splitlines()[0]}</h2>
-                    {'\n'.join(idea_text.splitlines()[1:])}
+                    <p>{'<br>'.join(idea_text.splitlines()[1:])}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 col1, col2, col3 = st.columns([1, 2, 1])
