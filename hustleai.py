@@ -10,6 +10,16 @@ from datetime import datetime, timedelta
 # ----------------------------------------------------------------------
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered", initial_sidebar_state="expanded")
 st.experimental_set_query_params(**st.experimental_get_query_params())
+params = st.experimental_get_query_params()
+if "logout" in params and params["logout"][0] == "true":
+    if 'user_email' in st.session_state:
+        del st.session_state.user_email
+        del st.session_state.username
+        del st.session_state.free_count
+        del st.session_state.is_pro
+    st.experimental_set_query_params(page="Home")
+    st.rerun()
+page = params.get("page", ["Home"])[0]
 # ----------------------------------------------------------------------
 # OPENAI KEY - FROM SECRETS ONLY
 # ----------------------------------------------------------------------
@@ -209,9 +219,9 @@ st.markdown("""
     .stFileUploader>div>div {border-radius: 12px; border: 2px dashed #42a5f5; padding: 1rem;}
     .idea-card {background:white; padding:2rem; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.15); text-align:left; margin:1.5rem 0; border-left: 6px solid #42a5f5; font-family: Arial, sans-serif;}
     .idea-card h2 {text-align: center; font-weight: bold;}
-    .header {background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: flex-end; align-items: center;}
+    .header {background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: flex-end; align-items: center; width: 100%;}
     .header a {color: white; margin: 0 10px; text-decoration: none;}
-    .header button {background: none; border: none; color: white; cursor: pointer;}
+    .header span {color: white; margin: 0 10px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -219,26 +229,19 @@ st.markdown("""
 st.markdown("""
 <div class="header">
     <a href="#">Email Preferences</a>
-    <a href="#">Help Center</a>
-    <a href="#">Ticket Check</a> |
+    <a href="#">Help Center</a> |
 """, unsafe_allow_html=True)
 
 if 'user_email' in st.session_state:
     st.markdown(f"""
     <span>{st.session_state.username}</span>
-    <button onclick="location.href='/Settings'">Settings</button>
-    <button onclick="logout()">Log Out</button>
+    <a href="?page=Settings">Settings</a>
+    <a href="?logout=true">Log Out</a>
     """, unsafe_allow_html=True)
-    if st.button("Log Out", key="logout_button"):
-        del st.session_state.user_email
-        del st.session_state.username
-        del st.session_state.free_count
-        del st.session_state.is_pro
-        st.rerun()
 else:
     st.markdown("""
-    <button onclick="location.href='/Login'">Log In</button>
-    <button onclick="location.href='/Signup'">Sign Up</button>
+    <a href="?page=Login">Log In</a>
+    <a href="?page=Signup">Sign Up</a>
     """, unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
@@ -253,16 +256,17 @@ st.markdown("<p class='subtitle'>Turn your skills into side income — anywhere.
 # ----------------------------------------------------------------------
 # Navigation
 # ----------------------------------------------------------------------
-pages = {
+pages_nav = {
     "Home": "Generate Hustles",
     "Checklist": "My Checklist",
     "Community": "Community Forum",
     "Monetization": "Upgrade to Pro",
     "Settings": "Settings"
 }
-page = st.sidebar.selectbox("Navigate", list(pages.keys()))
-if 'free_count' not in st.session_state: st.session_state.free_count = 0
-if 'is_pro' not in st.session_state: st.session_state.is_pro = False
+nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()))
+if nav_col != page:
+    st.experimental_set_query_params(page=nav_col)
+    st.rerun()
 # ----------------------------------------------------------------------
 # Home – WITH LOCATION + CLEAN CARDS
 # ----------------------------------------------------------------------
@@ -376,6 +380,52 @@ if page == "Home":
                         st.rerun()
             else:
                 st.success("You've seen all ideas! Generate more or upgrade.")
+# ----------------------------------------------------------------------
+# Login
+# ----------------------------------------------------------------------
+elif page == "Login":
+    st.title("Sign In to HustleAI")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    if st.button("Sign In"):
+        if email in users and users[email]["password"] == password:
+            st.session_state.user_email = email
+            st.session_state.username = users[email]["username"]
+            st.session_state.free_count = users[email].get("free_count", 0)
+            st.session_state.is_pro = users[email].get("is_pro", False)
+            st.success(f"Signed in as {st.session_state.username}!")
+            st.experimental_set_query_params(page="Home")
+            st.rerun()
+        else:
+            st.error("Invalid email or password.")
+    st.write("New user?")
+    if st.button("Sign Up Here"):
+        st.experimental_set_query_params(page="Signup")
+        st.rerun()
+# ----------------------------------------------------------------------
+# Signup
+# ----------------------------------------------------------------------
+elif page == "Signup":
+    st.title("Sign Up to HustleAI")
+    username = st.text_input("Username")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    if st.button("Sign Up"):
+        if email not in users:
+            users[email] = {"username": username, "password": password, "free_count": 0, "is_pro": False}
+            save_json("users.json", users)
+            st.session_state.user_email = email
+            st.session_state.username = username
+            st.session_state.free_count = 0
+            st.session_state.is_pro = False
+            st.success("Signed up successfully!")
+            st.experimental_set_query_params(page="Home")
+            st.rerun()
+        else:
+            st.error("Email already exists.")
+    if st.button("Back to Login"):
+        st.experimental_set_query_params(page="Login")
+        st.rerun()
 # ----------------------------------------------------------------------
 # Community
 # ----------------------------------------------------------------------
