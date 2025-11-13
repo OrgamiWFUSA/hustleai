@@ -170,7 +170,7 @@ def generate_checklist(idea):
         client = OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format as numbered list with editable due dates."}]
+            messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format exactly as a numbered list like '1. Goal - YYYY-MM-DD' where due dates are in YYYY-MM-DD format."}]
         )
         txt = response.choices[0].message.content
         lines = txt.split('\n')
@@ -178,9 +178,18 @@ def generate_checklist(idea):
         for line in lines:
             if line.strip():
                 parts = line.split(' - ')
-                goal = parts[0]
-                due = parts[1] if len(parts) > 1 else (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
-                goals.append({"goal": goal, "due": due})
+                if len(parts) == 2:
+                    goal = parts[0].strip()
+                    due_str = parts[1].strip()
+                    try:
+                        # Validate and parse the date
+                        due_date = datetime.strptime(due_str, '%Y-%m-%d')
+                        goals.append({"goal": goal, "due": due_date.strftime('%Y-%m-%d')})
+                    except ValueError:
+                        # If invalid, use default
+                        goals.append({"goal": goal, "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
+                else:
+                    goals.append({"goal": line.strip(), "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
         return goals
     except Exception as e:
         st.error(f"OpenAI error: {e}")
@@ -426,7 +435,11 @@ elif page == "Checklist":
                 c1, c2 = st.columns([3,1])
                 with c1: st.write(item["goal"])
                 with c2:
-                    new_date = st.date_input("Due", value=datetime.strptime(item["due"], '%Y-%m-%d'), key=f"due_{i}")
+                    try:
+                        due_value = datetime.strptime(item["due"], '%Y-%m-%d')
+                    except ValueError:
+                        due_value = datetime.now() + timedelta(days=7)
+                    new_date = st.date_input("Due", value=due_value, key=f"due_{i}")
                     checklist[i]["due"] = new_date.strftime('%Y-%m-%d')
             if st.button("Save Changes"):
                 save_json(path, {"idea": data["idea"], "checklist": checklist})
