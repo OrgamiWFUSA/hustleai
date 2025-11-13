@@ -228,6 +228,7 @@ st.markdown("""
 # Top Header
 st.markdown("""
 <div class="header">
+    <a href="?page=Home" target="_self">Home</a>
     <a href="#">Email Preferences</a>
     <a href="#">Help Center</a> |
 """, unsafe_allow_html=True)
@@ -263,10 +264,7 @@ pages_nav = {
     "Monetization": "Upgrade to Pro",
     "Settings": "Settings"
 }
-if 'user_email' not in st.session_state:
-    pages_nav["Login"] = "Login"
-    pages_nav["Signup"] = "Signup"
-nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()), key="nav_select")
+nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()))
 if nav_col != page:
     st.experimental_set_query_params(page=nav_col)
     st.rerun()
