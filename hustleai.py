@@ -28,9 +28,6 @@ CHECKLIST_DIR = "checklists"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(CHECKLIST_DIR, exist_ok=True)
 
-# ----------------------------------------------------------------------
-# JSON HELPERS
-# ----------------------------------------------------------------------
 def load_json(path, default):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
@@ -41,14 +38,11 @@ def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
-# ----------------------------------------------------------------------
-# LOAD DATA ON EVERY RUN
-# ----------------------------------------------------------------------
 users = load_json("users.json", {})
 posts = load_json("posts.json", [])
 
 # ----------------------------------------------------------------------
-# GUEST TRACKING (IP-based)
+# GUEST TRACKING
 # ----------------------------------------------------------------------
 GUESTS_FILE = "guests.json"
 guests = load_json(GUESTS_FILE, {})
@@ -63,26 +57,31 @@ if "ip" not in st.session_state:
     st.session_state.ip = get_ip()
 
 # ----------------------------------------------------------------------
-# AI FUNCTIONS — WITH ERROR HANDLING
+# AI FUNCTIONS — WITH LOCATION SUPPORT
 # ----------------------------------------------------------------------
-def generate_hustles(skills):
+def generate_hustles(skills, location=""):
+    location_prompt = f"in or near {location}" if location else "anywhere in the world"
     try:
         client = OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": f"Generate 3 side hustle ideas for someone skilled in {skills}. Each idea should include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) 3. 3-step launch plan with specific actions. Format as numbered list with bold headings."}]
+            messages=[{"role": "user", "content": f"Generate 3 side hustle ideas for someone skilled in {skills}, {location_prompt}. "
+                                                  "For each idea: 1. Bold title 2. 3-5 bullet points explaining the idea, startup cost under $100, first month potential $100-$1000, and 3-step launch plan. "
+                                                  "Format cleanly for mobile viewing."}]
         )
         return response.choices[0].message.content
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return "Error generating ideas."
 
-def generate_single_hustle(skills):
+def generate_single_hustle(skills, location=""):
+    location_prompt = f"in or near {location}" if location else "anywhere"
     try:
         client = OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": f"Generate 1 side hustle idea for someone skilled in {skills}. Include: 1. Startup cost (under $100) 2. First month earnings potential ($100-$1000) 3. 3-step launch plan with specific actions. Format with bold headings."}]
+            messages=[{"role": "user", "content": f"Generate 1 new side hustle idea for someone skilled in {skills}, {location_prompt}. "
+                                                  "Include: Bold title + 3-5 bullet points with startup cost under $100, first month potential $100-$1000, and 3-step launch plan."}]
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -121,14 +120,11 @@ st.markdown("""
     .logo {display: block; margin: 0 auto 1rem auto; max-width: 180px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
     .title {font-size: 2.8rem; font-weight: 700; text-align: center; color: #1565c0; margin-bottom: 0.5rem;}
     .subtitle {text-align: center; color: #555; font-size: 1.1rem; margin-bottom: 2rem;}
-    .stButton>button {background: linear-gradient(45deg, #42a5f5, #1976d2); color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 25px; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,0.2); transition: all 0.3s;}
-    .stButton>button:hover {transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3);}
+    .stButton>button {background: linear-gradient(45deg, #42a5f5, #1976d2); color: white; border: none; padding: 0.8rem 2rem; border-radius: 30px; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2);}
+    .stButton>button:hover {transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.3);}
     .stTextInput>div>div>input {border-radius: 12px; border: 1px solid #90caf9; padding: 0.8rem;}
     .stFileUploader>div>div {border-radius: 12px; border: 2px dashed #42a5f5; padding: 1rem;}
-    .stExpander {background: white; border-radius: 12px; border: 1px solid #bbdefb; margin-bottom: 1rem;}
-    .stSuccess {background: #e8f5e8; color: #2e7d32; border-radius: 12px; padding: 0.8rem;}
-    .stWarning {background: #fff3e0; color: #f57c00; border-radius: 12px; padding: 0.8rem;}
-    .idea-card {background:white; padding:2rem; border-radius:15px; box-shadow:0 8px 25px rgba(0,0,0,0.1); text-align:center; margin:1rem 0;}
+    .idea-card {background:white; padding:2rem; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.15); text-align:left; margin:1.5rem 0; border-left: 6px solid #42a5f5;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -136,11 +132,9 @@ st.markdown("""
 try:
     st.image("logo.png", use_column_width=False, width=180)
 except:
-    st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
-else:
-    st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
-
-st.markdown("<p class='subtitle'>Turn your skills into side income — in seconds.</p>", unsafe_allow_html=True)
+    pass
+st.markdown("<h1 class='title'>HustleAI</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Turn your skills into side income — anywhere.</p>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
 # Navigation
@@ -158,7 +152,7 @@ if 'free_count' not in st.session_state: st.session_state.free_count = 0
 if 'is_pro' not in st.session_state: st.session_state.is_pro = False
 
 # ----------------------------------------------------------------------
-# Home – generator + swipe + RESUME SAVED PER USER
+# Home – WITH LOCATION + CLEAN CARDS
 # ----------------------------------------------------------------------
 if page == "Home":
     # GUEST LIMIT
@@ -183,9 +177,9 @@ if page == "Home":
         st.info("Pro: $4.99/month – unlimited ideas, priority AI, exclusive templates.")
     else:
         uploaded_file = st.file_uploader("Upload resume (TXT/PDF)", type=['txt', 'pdf'])
-        skills_input = st.text_input("Or enter skills manually:", value=skills)
+        skills_input = st.text_input("Your skills (e.g., video editing, Spanish, cooking):", value=skills)
+        location = st.text_input("Your city or country (optional, for local ideas):", placeholder="e.g., Miami, USA or Remote")
 
-        # SAVE RESUME + SKILLS
         if uploaded_file:
             if 'user_email' not in st.session_state:
                 st.error("Sign in to save resume.")
@@ -195,7 +189,6 @@ if page == "Home":
                 file_path = os.path.join(UPLOAD_DIR, f"{email}_resume.{ext}")
                 with open(file_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
-                # Extract skills
                 if uploaded_file.type == "text/plain":
                     extracted = uploaded_file.read().decode("utf-8")
                 else:
@@ -206,14 +199,16 @@ if page == "Home":
                 st.success("Resume + skills saved!")
 
         final_skills = skills_input or (extracted if 'extracted' in locals() else "")
+        final_location = location.strip()
+
         if st.button("Generate My Hustles"):
             if final_skills:
-                with st.spinner("Generating…"):
-                    ideas = generate_hustles(final_skills)
-                st.session_state.ideas_list = ideas.split('\n\n')
+                with st.spinner("Generating personalized ideas..."):
+                    ideas = generate_hustles(final_skills, final_location)
+                st.session_state.ideas_list = ideas.strip().split("\n\n")
                 st.session_state.idea_index = 0
                 st.session_state.liked_idea = None
-                st.success("Ideas ready! Swipe left/right.")
+                st.success("Ideas ready! Swipe to explore.")
 
                 # Update free count
                 if 'user_email' in st.session_state:
@@ -228,27 +223,27 @@ if page == "Home":
             else:
                 st.warning("Enter skills or upload a resume first.")
 
-        # FAST MOBILE SWIPE
-        if 'ideas_list' in st.session_state:
+        # CLEAN SWIPE CARDS
+        if 'ideas_list' in st.session_state and st.session_state.ideas_list:
             ideas_list = st.session_state.ideas_list
             index = st.session_state.idea_index
+
             if index < len(ideas_list):
-                idea = ideas_list[index]
+                idea_text = ideas_list[index]
 
                 st.markdown(f"""
                 <div class="idea-card">
-                    <h2>Idea {index + 1}</h2>
-                    <div style="font-size:1.1rem;line-height:1.8;">{idea.replace('**', '<b>').replace('**', '</b>')}</div>
+                    {idea_text.replace('**', '<b>').replace('**', '</b>')}
                 </div>
                 """, unsafe_allow_html=True)
 
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col1:
                     if st.button("👎 Dislike", key=f"dislike_{index}"):
-                        new_idea = generate_single_hustle(final_skills)
-                        st.session_state.ideas_list[index] = new_idea
+                        new = generate_single_hustle(final_skills, final_location)
+                        st.session_state.ideas_list[index] = new
                         st.session_state.idea_index += 1
-                        # Update free count
+                        # Count swipe
                         if 'user_email' in st.session_state:
                             email = st.session_state.user_email
                             users[email]["free_count"] = users[email].get("free_count", 0) + 1
@@ -261,11 +256,11 @@ if page == "Home":
 
                 with col3:
                     if st.button("❤️ Like", key=f"like_{index}"):
-                        st.session_state.liked_idea = idea
+                        st.session_state.liked_idea = idea_text
                         if 'user_email' in st.session_state:
                             email = st.session_state.user_email
                             path = os.path.join(CHECKLIST_DIR, f"{email}.json")
-                            data = {"idea": idea, "checklist": generate_checklist(idea)}
+                            data = {"idea": idea_text, "checklist": generate_checklist(idea_text)}
                             save_json(path, data)
                             st.success("Saved to your Checklist!")
                         st.session_state.idea_index += 1
@@ -295,7 +290,7 @@ elif page == "Login":
         st.switch_page("pages/_signup.py")
 
 # ----------------------------------------------------------------------
-# Community – nested replies
+# Community
 # ----------------------------------------------------------------------
 elif page == "Community":
     st.title("Community Forum: Share Your Wins!")
