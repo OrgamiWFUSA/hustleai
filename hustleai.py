@@ -9,17 +9,6 @@ from datetime import datetime, timedelta
 # PAGE CONFIG + ENABLE BACK BUTTON
 # ----------------------------------------------------------------------
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered", initial_sidebar_state="expanded")
-st.experimental_set_query_params(**st.experimental_get_query_params())
-params = st.experimental_get_query_params()
-if "logout" in params and params["logout"][0] == "true":
-    if 'user_email' in st.session_state:
-        del st.session_state.user_email
-        del st.session_state.username
-        del st.session_state.free_count
-        del st.session_state.is_pro
-    st.experimental_set_query_params(page="Home")
-    st.rerun()
-page = params.get("page", ["Home"])[0]
 # ----------------------------------------------------------------------
 # OPENAI KEY - FROM SECRETS ONLY
 # ----------------------------------------------------------------------
