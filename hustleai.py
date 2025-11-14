@@ -221,7 +221,7 @@ st.markdown("""
     .stFileUploader>div>div {border-radius: 12px; border: 2px dashed #42a5f5; padding: 1rem;}
     .idea-card {background:white; padding:2rem; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.15); text-align:left; margin:1.5rem 0; border-left: 6px solid #42a5f5; font-family: Arial, sans-serif;}
     .idea-card h2 {text-align: center; font-weight: bold;}
-    .bottom-nav {position: fixed; bottom: 0; left: 0; right: 0; background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 -2px 5px rgba(0,0,0,0.2);}
+    .bottom-nav {position: fixed; bottom: 0; left: 0; right: 0; background-color: #00d1b2; padding: 10px; color: white; display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 -4px 20px rgba(0,0,0,0.2);}
     .bottom-nav a {color: white; text-decoration: none; font-size: 1rem; padding: 5px 10px;}
 </style>
 """, unsafe_allow_html=True)
