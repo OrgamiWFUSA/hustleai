@@ -205,7 +205,7 @@ def generate_checklist(idea):
         st.error(f"OpenAI error: {e}")
         return []
 # ----------------------------------------------------------------------
-# BEAUTIFUL DESIGN + LOGO + TOP HEADER
+# BEAUTIFUL DESIGN + LOGO + TOP HEADER + BOTTOM NAV
 # ----------------------------------------------------------------------
 st.markdown("""
 <style>
@@ -222,6 +222,8 @@ st.markdown("""
     .header {background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: flex-end; align-items: center; width: 100%;}
     .header a {color: white; margin: 0 10px; text-decoration: none;}
     .header span {color: white; margin: 0 10px;}
+    .bottom-nav {position: fixed; bottom: 0; left: 0; right: 0; background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 -2px 5px rgba(0,0,0,0.2);}
+    .bottom-nav a {color: white; text-decoration: none; font-size: 1rem; padding: 5px 10px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -268,6 +270,18 @@ nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()))
 if nav_col != page:
     st.experimental_set_query_params(page=nav_col)
     st.rerun()
+# ----------------------------------------------------------------------
+# Bottom Navigation
+# ----------------------------------------------------------------------
+st.markdown("""
+<div class="bottom-nav">
+    <a href="?page=Home" target="_self">Home</a>
+    <a href="?page=Checklist" target="_self">Checklist</a>
+    <a href="?page=Community" target="_self">Community</a>
+    <a href="?page=Monetization" target="_self">Upgrade</a>
+    <a href="?page=Settings" target="_self">Settings</a>
+</div>
+""", unsafe_allow_html=True)
 # ----------------------------------------------------------------------
 # Home – WITH LOCATION + CLEAN CARDS
 # ----------------------------------------------------------------------
