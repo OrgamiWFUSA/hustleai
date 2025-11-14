@@ -1,46 +1,30 @@
-import json
-import os
-import streamlit as st
-
-# Folders (from original code)
-UPLOAD_DIR = "uploads"
-CHECKLIST_DIR = "checklists"
-
-def load_json(path, default):
-    """Load JSON from file or return default."""
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return default
-
-def save_json(path, data):
-    """Save data to JSON file."""
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-def get_ip():
-    """Get user's IP (for guest tracking)."""
+def generate_checklist(idea):
     try:
-        return st.context.headers.get("X-Forwarded-For", "unknown").split(',')[0].strip()
-    except:
-        return "unknown"
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{
+                "role": "user",
+                "content": f"""Take this full side hustle idea and break it into 7–15 specific, actionable steps to launch it.
+Include realistic due dates starting from today, spread over 30 days.
+Format each step as: 'Step description - YYYY-MM-DD'
 
-def get_bottom_nav_html():
-    """Return HTML for bottom navigation."""
-    return """
-    <div class="bottom-nav">
-        <a href="?page=Home" target="_self">Home</a>
-        <a href="?page=Checklist" target="_self">Checklist</a>
-        <a href="?page=Community" target="_self">Community</a>
-        <a href="?page=Account" target="_self">Account</a>
-        <a href="?page=Settings" target="_self">Settings</a>
-    </div>
-    """
-
-def authenticate_user():
-    """Handle user authentication check."""
-    if 'user_email' not in st.session_state:
-        st.warning("Please sign in to access this page.")
-        st.experimental_set_query_params(page="Account")
-        st.stop()
-    # Additional auth logic can go here if needed (e.g., token validation)
+Idea:
+{idea}"""
+            }]
+        )
+        lines = response.choices[0].message.content.strip().split('\n')
+        steps = []
+        base = datetime.now()
+        for i, line in enumerate(lines):
+            if ' - ' in line:
+                goal, date_str = line.split(' - ', 1)
+                try:
+                    due = datetime.strptime(date_str.strip(), "%Y-%m-%d")
+                except:
+                    due = base + timedelta(days=i + 1)
+                steps.append({"goal": goal.strip(), "due": due.strftime("%Y-%m-%d")})
+        return steps[:15]  # Max 15 steps
+    except Exception as e:
+        st.error("AI failed to generate checklist")
+        return []

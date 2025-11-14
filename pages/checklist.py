@@ -1,62 +1,72 @@
+# pages/checklist.py
 import streamlit as st
-from utils import get_bottom_nav_html, authenticate_user, parse_resume_with_grok
-from pypdf2 import PdfReader
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from utils import *
 
-st.set_page_config(page_title="Checklist - HustleAI", layout="wide", initial_sidebar_state="collapsed")
+st.title("My Hustle Checklists")
 
-# Back button fix
-st.markdown('<style> section[data-testid="stSidebar"] { display: none !important; } </style>', unsafe_allow_html=True)
-st.experimental_set_query_params()
-
-user = authenticate_user()
-if not user:
-    st.warning("Please sign in to access the checklist.")
+if 'user_email' not in st.session_state:
+    st.warning("Sign in to view your checklists")
     st.stop()
 
-st.title("Resume Checklist & AI Analysis")
+email = st.session_state.user_email
+path = os.path.join(CHECKLIST_DIR, f"{email}.json")
 
-uploaded_file = st.file_uploader("Upload your resume (PDF)", type=["pdf"])
+if not os.path.exists(path):
+    st.info("No checklists yet – go to **Home** and swipe right on an idea!")
+    st.stop()
 
-if uploaded_file:
-    st.subheader("AI-Powered Resume Analysis")
-    try:
-        # Extract text from PDF (handles multi-page)
-        reader = PdfReader(uploaded_file)
-        resume_text = ""
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                resume_text += text + "\n"
-        
-        if not resume_text.strip():
-            raise ValueError("No text extracted from PDF. Try a different file.")
-        
-        # Call Grok API for structured parsing
-        api_key = "your_xai_api_key_here"  # Replace with your key from https://x.ai/api
-        analysis_json = parse_resume_with_grok(resume_text, api_key)
-        st.json(analysis_json)  # Display parsed JSON
-        
-        # Expanded: Auto-generate checklist based on analysis
-        analysis = eval(analysis_json) if isinstance(analysis_json, str) else analysis_json  # Safe eval if string
-        has_skills = bool(analysis.get("skills"))
-        has_experience = bool(analysis.get("experience"))
-        has_education = bool(analysis.get("education"))
-        
-        st.subheader("Auto-Generated Checklist")
-        st.checkbox("Skills section present and relevant", value=has_skills)
-        st.checkbox("Experience with quantifiable achievements", value=has_experience and any("bullets" in exp for exp in analysis.get("experience", [])))
-        st.checkbox("Education details complete", value=has_education)
-        st.checkbox("No obvious errors (e.g., missing contact info)", value=bool(analysis.get("email")) and bool(analysis.get("phone")))
-    except Exception as e:
-        st.error(f"Error processing resume: {str(e)}. Ensure PDF is text-based (not scanned).")
+data = load_json(path, [])
 
-# Manual checklist (expanded with more items)
-st.subheader("Manual Resume Checklist")
-st.checkbox("Tailored to specific job description")
-st.checkbox("Quantifiable achievements in experience")
-st.checkbox("Keywords from job posting included")
-st.checkbox("No typos or grammatical errors")
-st.checkbox("Consistent formatting and fonts")
+for idx, entry in enumerate(data):
+    idea = entry["idea"]
+    with st.expander(f"**{idea.splitlines()[0]}**", expanded=True):
+        st.write(idea)
 
-# Render bottom nav with active
-st.markdown(get_bottom_nav_html("checklist"), unsafe_allow_html=True)
+        # Regenerate if missing or user clicks
+        if "checklist" not in entry or st.button("Regenerate Plan", key=f"regen_{idx}"):
+            with st.spinner("Creating your step-by-step launch plan..."):
+                steps = generate_checklist(idea)
+                entry["checklist"] = steps
+                save_json(path, data)
+            st.success("Plan generated!")
+
+        checklist = entry.get("checklist", [])
+        if not checklist:
+            st.warning("No steps yet. Click 'Regenerate Plan'.")
+        else:
+            for i, step in enumerate(checklist):
+                c1, c2 = st.columns([4, 1])
+                with c1:
+                    st.write(f"**{i+1}.** {step['goal']}")
+                with c2:
+                    try:
+                        due = datetime.strptime(step["due"], "%Y-%m-%d")
+                    except:
+                        due = datetime.now() + timedelta(days=7)
+                    new_due = st.date_input(
+                        "Due", value=due, key=f"due_{idx}_{i}",
+                        label_visibility="collapsed"
+                    )
+                    checklist[i]["due"] = new_due.strftime("%Y-%m-%d")
+
+        if st.button("Save Changes", key=f"save_{idx}"):
+            save_json(path, data)
+            st.success("Checklist saved!")
+
+# Bottom nav (same as before)
+st.markdown("""
+<style>
+    .bottom-nav {position:fixed;bottom:0;left:0;right:0;background:#00D1B2;padding:14px;display:flex;justify-content:space-around;z-index:9999;box-shadow:0 -4px 20px rgba(0,0,0,0.3);font-weight:600;}
+    .bottom-nav a {color:white;text-decoration:none;}
+</style>
+<div class="bottom-nav">
+    <a href="/" target="_self">Home</a>
+    <a href="/checklist" target="_self">Checklist</a>
+    <a href="/community" target="_self">Community</a>
+    <a href="/account" target="_self">Account</a>
+    <a href="/settings" target="_self">Settings</a>
+</div>
+""", unsafe_allow_html=True)
