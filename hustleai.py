@@ -386,6 +386,13 @@ elif page == "Account":
         if st.button("Log Out"):
             st.experimental_set_query_params(logout="true")
             st.rerun()
+        # Monetization section in Account tab
+        st.subheader("Upgrade to Pro")
+        st.write("Freemium: 3 free ideas/month, $4.99 for unlimited.")
+        st.write("Affiliates: Shopify, Canva links.")
+        st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
+        if st.button("Upgrade to Pro ($4.99/month)"):
+            pass # Add Stripe later
     else:
         # Login Form
         st.subheader("Login")
@@ -509,16 +516,6 @@ elif page == "Checklist":
             st.info("No checklists yet – generate ideas and swipe right on one.")
     else:
         st.warning("Sign in to view your checklists.")
-# ----------------------------------------------------------------------
-# Monetization
-# ----------------------------------------------------------------------
-elif page == "Monetization":
-    st.title("Monetization & Upgrade")
-    st.write("Freemium: 3 free ideas/month, $4.99 for unlimited.")
-    st.write("Affiliates: Shopify, Canva links.")
-    st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
-    if st.button("Upgrade to Pro ($4.99/month)"):
-        pass # Add Stripe later
 # ----------------------------------------------------------------------
 # Settings
 # ----------------------------------------------------------------------
