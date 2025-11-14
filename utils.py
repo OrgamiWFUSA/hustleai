@@ -1,171 +1,130 @@
 import streamlit as st
-from openai import OpenAI
-import PyPDF2
-import stripe
-import os
-import json
-from datetime import datetime, timedelta
+import requests
+from pypdf2 import PdfReader
 
-# Constants and Folders
-UPLOAD_DIR = "uploads"
-CHECKLIST_DIR = "checklists"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(CHECKLIST_DIR, exist_ok=True)
-
-# JSON Load/Save Functions
-def load_json(path, default):
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return default
-
-def save_json(path, data):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-# Global Data
-users = load_json("users.json", {})
-posts = load_json("posts.json", {})
-guests = load_json("guests.json", {})
-
-# Guest Tracking
-def get_ip():
-    try:
-        return st.context.headers.get("X-Forwarded-For", "unknown").split(',')[0].strip()
-    except:
-        return "unknown"
-
-# Skill Extraction Function
-def extract_skills_from_pdf(uploaded_file):
-    reader = PyPDF2.PdfReader(uploaded_file)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() + "\n"
+def get_bottom_nav_html(current_page=""):
+    """
+    Returns the HTML for the turquoise bottom navigation bar with active state.
+    Expanded for better UX: Highlights the current page button.
+    """
+    buttons = {
+        "Home": "/",
+        "Checklist": "/checklist",
+        "Community": "/community",
+        "Account": "/account",
+        "Settings": "/settings"
+    }
+    button_html = ""
+    for label, url in buttons.items():
+        active_class = ' class="active"' if current_page.lower() in url.lower() else ""
+        button_html += f'<button{active_class} onclick="window.location.href=\'{url}\'">{label}</button>'
     
-    text_lower = text.lower()
-    
-    common_skills = [
-        "active listening", "communication", "computer skills", "customer service",
-        "interpersonal skills", "leadership", "management", "problem-solving",
-        "time management", "transferable skills", "verbal communication",
-        "nonverbal communication", "written communication", "empathy",
-        "emotional intelligence", "collaboration", "teamwork", "presentation skills",
-        "negotiation", "conflict resolution", "adaptability", "creativity",
-        "critical thinking", "organization", "attention to detail", "project management",
-        "data analysis", "microsoft office", "excel", "powerpoint", "word",
-        "google workspace", "programming", "python", "java", "sql", "javascript",
-        "html", "css", "machine learning", "ai", "data science", "web development",
-        "graphic design", "adobe creative suite", "photoshop", "illustrator",
-        "sales", "marketing", "seo", "content creation", "social media management",
-        "public speaking", "research", "analytical skills", "budgeting",
-        "financial analysis", "accounting", "crm software", "salesforce",
-        "networking", "multitasking", "initiative", "reliability", "work ethic"
-    ]
-    
-    extracted_skills = [skill for skill in common_skills if skill.lower() in text_lower]
-    extracted_skills = sorted(set(extracted_skills))
-    
-    return ', '.join(extracted_skills)
+    return f"""
+    <style>
+        /* Bottom navigation bar styling - Meta-inspired clean look */
+        .bottom-nav {{
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #40E0D0;  /* Turquoise */
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px 0;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }}
+        .bottom-nav button {{
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: white;
+            padding: 5px 10px;
+            transition: color 0.3s;
+        }}
+        .bottom-nav button:hover {{
+            color: #333;
+        }}
+        .bottom-nav button.active {{
+            font-weight: bold;
+            color: #333;
+        }}
+    </style>
+    <div class="bottom-nav">
+        {button_html}
+    </div>
+    """
 
-# AI Functions
-def generate_hustles(skills, location=""):
-    location_prompt = f"in or near {location}" if location else "anywhere in the world"
-    try:
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": f"Generate 3 side hustle ideas for someone skilled in {skills}, {location_prompt}. "
-                                                  "For each idea, provide the full complete response in this exact format (do not output partial responses, and no 'Idea #1' prefix):\n"
-                                                  "**Subject**\n"
-                                                  "First Month Overhead: $X (under $100)\n"
-                                                  "First Month Income Potential: $Y-$Z\n"
-                                                  "· Bullet point 1 with more detail of the idea\n"
-                                                  "· Bullet point 2 with more detail of the idea\n"
-                                                  "· Bullet point 3 with more detail of the idea\n"
-                                                  "· Bullet point 4 with more detail of the idea\n"
-                                                  "3-step launch plan:\n"
-                                                  "1. Step 1\n"
-                                                  "2. Step 2\n"
-                                                  "3. Step 3\n\n"
-                                                  "Example:\n"
-                                                  "**Freelance Graphic Design Services**\n"
-                                                  "First Month Overhead: $50 (under $100)\n"
-                                                  "First Month Income Potential: $300-$800\n"
-                                                  "· Leverage your graphic design skills to create logos, banners, and social media graphics for small businesses.\n"
-                                                  "· Target local startups or online entrepreneurs who need affordable design work.\n"
-                                                  "· Use free tools like Canva initially, upgrading as needed.\n"
-                                                  "· Offer packages starting at low rates to build a portfolio quickly.\n"
-                                                  "3-step launch plan:\n"
-                                                  "1. Build a simple portfolio on a free site like Behance.\n"
-                                                  "2. Post services on freelance platforms like Upwork or Fiverr.\n"
-                                                  "3. Network on social media and reach out to potential clients."}]
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        st.error(f"OpenAI error: {e}")
-        return "Error generating ideas."
+def authenticate_user():
+    """
+    Expanded placeholder for user auth logic (session-based).
+    Can integrate with Firebase or SQL later.
+    """
+    if 'user' not in st.session_state:
+        st.session_state.user = None
+    return st.session_state.user
 
-def generate_single_hustle(skills, location=""):
-    location_prompt = f"in or near {location}" if location else "anywhere"
+def parse_resume_with_grok(resume_text, api_key):
+    """
+    Use Grok API for resume parsing (OpenAI-compatible format).
+    Expanded with structured JSON output and error handling.
+    """
+    url = "https://api.x.ai/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    data = {
+        "model": "grok-beta",  # Use latest available; check docs
+        "messages": [
+            {"role": "system", "content": "You are a resume parser. Extract and return as JSON: name, email, phone, skills (list), experience (list of dicts with job_title, company, dates, bullets), education (list of dicts with degree, school, dates)."},
+            {"role": "user", "content": f"Parse this resume text: {resume_text}"}
+        ],
+        "temperature": 0.5,
+        "max_tokens": 2048
+    }
     try:
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": f"Generate 1 new side hustle idea for someone skilled in {skills}, {location_prompt}. "
-                                                  "Provide the full complete response in this exact format (do not output partial responses, and no 'Idea #1' prefix):\n"
-                                                  "**Subject**\n"
-                                                  "First Month Overhead: $X (under $100)\n"
-                                                  "First Month Income Potential: $Y-$Z\n"
-                                                  "· Bullet point 1 with more detail of the idea\n"
-                                                  "· Bullet point 2 with more detail of the idea\n"
-                                                  "· Bullet point 3 with more detail of the idea\n"
-                                                  "· Bullet point 4 with more detail of the idea\n"
-                                                  "3-step launch plan:\n"
-                                                  "1. Step 1\n"
-                                                  "2. Step 2\n"
-                                                  "3. Step 3\n"
-                                                  "Example:\n"
-                                                  "**Freelance Graphic Design Services**\n"
-                                                  "First Month Overhead: $50 (under $100)\n"
-                                                  "First Month Income Potential: $300-$800\n"
-                                                  "· Leverage your graphic design skills to create logos, banners, and social media graphics for small businesses.\n"
-                                                  "· Target local startups or online entrepreneurs who need affordable design work.\n"
-                                                  "· Use free tools like Canva initially, upgrading as needed.\n"
-                                                  "· Offer packages starting at low rates to build a portfolio quickly.\n"
-                                                  "3-step launch plan:\n"
-                                                  "1. Build a simple portfolio on a free site like Behance.\n"
-                                                  "2. Post services on freelance platforms like Upwork or Fiverr.\n"
-                                                  "3. Network on social media and reach out to potential clients."}]
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        st.error(f"OpenAI error: {e}")
-        return "Error."
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"API error: {str(e)}")
 
-def generate_checklist(idea):
+def generate_hustle_ideas(location="", num_ideas=5, api_key=""):
+    """
+    New: AI-powered hustle idea generator using Grok API.
+    Generates tailored ideas based on optional location.
+    Returns list of formatted idea strings.
+    """
+    prompt = f"Generate {num_ideas} unique hustle/business ideas. Format each as: 'Idea #X: **Bold Header** - Bullet 1 - Bullet 2 - Bullet 3 - (up to 5 bullets)'. "
+    if location:
+        prompt += f"Tailor to {location} (e.g., local trends, needs)."
+    else:
+        prompt += "Make them general but actionable."
+    
+    url = "https://api.x.ai/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    data = {
+        "model": "grok-beta",
+        "messages": [
+            {"role": "system", "content": "You are a creative hustle idea generator for entrepreneurs."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 2048
+    }
     try:
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format exactly as a numbered list like '1. Goal - YYYY-MM-DD' where due dates are in YYYY-MM-DD format."}]
-        )
-        txt = response.choices[0].message.content
-        lines = txt.split('\n')
-        goals = []
-        for line in lines:
-            if line.strip():
-                parts = line.split(' - ')
-                if len(parts) == 2:
-                    goal = parts[0].strip()
-                    due_str = parts[1].strip()
-                    try:
-                        due_date = datetime.strptime(due_str, '%Y-%m-%d')
-                        goals.append({"goal": goal, "due": due_date.strftime('%Y-%m-%d')})
-                    except ValueError:
-                        goals.append({"goal": goal, "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
-                else:
-                    goals.append({"goal": line.strip(), "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
-        return goals
-    except Exception as e:
-        st.error(f"OpenAI error: {e}")
-        return []
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        raw_ideas = response.json()["choices"][0]["message"]["content"]
+        # Split into list of ideas
+        ideas = [idea.strip() for idea in raw_ideas.split("Idea #") if idea.strip()]
+        ideas = [f"Idea #{i+1}: {idea}" for i, idea in enumerate(ideas)]
+        return ideas
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Idea generation error: {str(e)}")

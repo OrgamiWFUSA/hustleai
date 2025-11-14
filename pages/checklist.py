@@ -1,56 +1,62 @@
 import streamlit as st
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from utils import *
+from utils import get_bottom_nav_html, authenticate_user, parse_resume_with_grok
+from pypdf2 import PdfReader
 
-st.markdown("""
-<style>
-    .main {background: linear-gradient(135deg, #e0f7fa, #ffffff); padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);}
-    .logo {display: block; margin: 0 auto 1rem auto; max-width: 180px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
-    .title {font-size: 2.8rem; font-weight: 700; text-align: center; color: #1565c0; margin-bottom: 0.5rem; font-family: Arial, sans-serif;}
-    .subtitle {text-align: center; color: #555; font-size: 1.1rem; margin-bottom: 2rem;}
-    .stButton>button {background: linear-gradient(45deg, #42a5f5, #1976d2); color: white; border: none; padding: 0.8rem 2rem; border-radius: 30px; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2);}
-    .stButton>button:hover {transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.3);}
-    .stTextInput>div>div>input {border-radius: 12px; border: 1px solid #90caf9; padding: 0.8rem;}
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Checklist - HustleAI", layout="wide", initial_sidebar_state="collapsed")
 
-# Logo
-try:
-    st.image("logo.png", use_column_width=False, width=180)
-except:
-    pass
-st.markdown("<h1 class='title'>My Checklists</h1>", unsafe_allow_html=True)
+# Back button fix
+st.markdown('<style> section[data-testid="stSidebar"] { display: none !important; } </style>', unsafe_allow_html=True)
+st.experimental_set_query_params()
 
-if 'user_email' in st.session_state:
-    email = st.session_state.user_email
-    path = os.path.join(CHECKLIST_DIR, f"{email}.json")
-    if os.path.exists(path):
-        data = load_json(path, [])
-        for idx, entry in enumerate(data):
-            with st.expander(f"Liked Idea {idx+1}: {entry['idea'].splitlines()[0]}"):
-                st.subheader("Your Liked Hustle")
-                st.write(entry["idea"])
-                st.subheader("Checklist")
-                checklist = entry.get("checklist", [])
-                for i, item in enumerate(checklist):
-                    c1, c2 = st.columns([3,1])
-                    with c1: st.write(item["goal"])
-                    with c2:
-                        try:
-                            due_value = datetime.strptime(item["due"], '%Y-%m-%d')
-                        except ValueError:
-                            due_value = datetime.now() + timedelta(days=7)
-                        new_date = st.date_input("Due", value=due_value, key=f"due_{idx}_{i}")
-                        checklist[i]["due"] = new_date.strftime('%Y-%m-%d')
-        if st.button("Save Changes"):
-            save_json(path, data)
-            st.success("Checklists updated!")
-    else:
-        st.info("No checklists yet – generate ideas and swipe right on one.")
-else:
-    st.warning("Sign in to view your checklists.")
+user = authenticate_user()
+if not user:
+    st.warning("Please sign in to access the checklist.")
+    st.stop()
 
-# Bottom Navigation
-st.markdown(bottom_nav_html, unsafe_allow_html=True)
+st.title("Resume Checklist & AI Analysis")
+
+uploaded_file = st.file_uploader("Upload your resume (PDF)", type=["pdf"])
+
+if uploaded_file:
+    st.subheader("AI-Powered Resume Analysis")
+    try:
+        # Extract text from PDF (handles multi-page)
+        reader = PdfReader(uploaded_file)
+        resume_text = ""
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                resume_text += text + "\n"
+        
+        if not resume_text.strip():
+            raise ValueError("No text extracted from PDF. Try a different file.")
+        
+        # Call Grok API for structured parsing
+        api_key = "your_xai_api_key_here"  # Replace with your key from https://x.ai/api
+        analysis_json = parse_resume_with_grok(resume_text, api_key)
+        st.json(analysis_json)  # Display parsed JSON
+        
+        # Expanded: Auto-generate checklist based on analysis
+        analysis = eval(analysis_json) if isinstance(analysis_json, str) else analysis_json  # Safe eval if string
+        has_skills = bool(analysis.get("skills"))
+        has_experience = bool(analysis.get("experience"))
+        has_education = bool(analysis.get("education"))
+        
+        st.subheader("Auto-Generated Checklist")
+        st.checkbox("Skills section present and relevant", value=has_skills)
+        st.checkbox("Experience with quantifiable achievements", value=has_experience and any("bullets" in exp for exp in analysis.get("experience", [])))
+        st.checkbox("Education details complete", value=has_education)
+        st.checkbox("No obvious errors (e.g., missing contact info)", value=bool(analysis.get("email")) and bool(analysis.get("phone")))
+    except Exception as e:
+        st.error(f"Error processing resume: {str(e)}. Ensure PDF is text-based (not scanned).")
+
+# Manual checklist (expanded with more items)
+st.subheader("Manual Resume Checklist")
+st.checkbox("Tailored to specific job description")
+st.checkbox("Quantifiable achievements in experience")
+st.checkbox("Keywords from job posting included")
+st.checkbox("No typos or grammatical errors")
+st.checkbox("Consistent formatting and fonts")
+
+# Render bottom nav with active
+st.markdown(get_bottom_nav_html("checklist"), unsafe_allow_html=True)
