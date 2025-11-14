@@ -1,27 +1,15 @@
 import streamlit as st
-from streamlit_navigation_bar import st_navbar
 from openai import OpenAI
 import PyPDF2
 import stripe
 import os
 import json
 from datetime import datetime, timedelta
-
 # ----------------------------------------------------------------------
 # PAGE CONFIG + ENABLE BACK BUTTON
 # ----------------------------------------------------------------------
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered", initial_sidebar_state="expanded")
 st.experimental_set_query_params(**st.experimental_get_query_params())
-params = st.experimental_get_query_params()
-if "logout" in params and params["logout"][0] == "true":
-    if 'user_email' in st.session_state:
-        del st.session_state.user_email
-        del st.session_state.username
-        del st.session_state.free_count
-        del st.session_state.is_pro
-    st.experimental_set_query_params(page="Home")
-    st.rerun()
-page = params.get("page", ["Home"])[0]
 # ----------------------------------------------------------------------
 # OPENAI KEY - FROM SECRETS ONLY
 # ----------------------------------------------------------------------
@@ -182,7 +170,7 @@ def generate_checklist(idea):
         client = OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format exactly as a numbered list like '1. Goal - YYYY-MM-DD' where due dates are in YYYY-MM-DD format."}]
+            messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format as numbered list with editable due dates."}]
         )
         txt = response.choices[0].message.content
         lines = txt.split('\n')
@@ -190,24 +178,15 @@ def generate_checklist(idea):
         for line in lines:
             if line.strip():
                 parts = line.split(' - ')
-                if len(parts) == 2:
-                    goal = parts[0].strip()
-                    due_str = parts[1].strip()
-                    try:
-                        # Validate and parse the date
-                        due_date = datetime.strptime(due_str, '%Y-%m-%d')
-                        goals.append({"goal": goal, "due": due_date.strftime('%Y-%m-%d')})
-                    except ValueError:
-                        # If invalid, use default
-                        goals.append({"goal": goal, "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
-                else:
-                    goals.append({"goal": line.strip(), "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
+                goal = parts[0]
+                due = parts[1] if len(parts) > 1 else (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
+                goals.append({"goal": goal, "due": due})
         return goals
     except Exception as e:
         st.error(f"OpenAI error: {e}")
         return []
 # ----------------------------------------------------------------------
-# BEAUTIFUL DESIGN + LOGO + TOP HEADER + BOTTOM NAV
+# BEAUTIFUL DESIGN + LOGO
 # ----------------------------------------------------------------------
 st.markdown("""
 <style>
@@ -221,11 +200,8 @@ st.markdown("""
     .stFileUploader>div>div {border-radius: 12px; border: 2px dashed #42a5f5; padding: 1rem;}
     .idea-card {background:white; padding:2rem; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.15); text-align:left; margin:1.5rem 0; border-left: 6px solid #42a5f5; font-family: Arial, sans-serif;}
     .idea-card h2 {text-align: center; font-weight: bold;}
-    .bottom-nav {position: fixed; bottom: 0; left: 0; right: 0; background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 -2px 5px rgba(0,0,0,0.2);}
-    .bottom-nav a {color: white; text-decoration: none; font-size: 1rem; padding: 5px 10px;}
 </style>
 """, unsafe_allow_html=True)
-
 # Logo
 try:
     st.image("logo.png", use_column_width=False, width=180)
@@ -236,29 +212,16 @@ st.markdown("<p class='subtitle'>Turn your skills into side income — anywhere.
 # ----------------------------------------------------------------------
 # Navigation
 # ----------------------------------------------------------------------
-pages_nav = {
+pages = {
     "Home": "Generate Hustles",
+    "Login": "Sign In",
     "Checklist": "My Checklist",
     "Community": "Community Forum",
-    "Account": "Account",
-    "Settings": "Settings"
+    "Monetization": "Upgrade to Pro"
 }
-nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()))
-if nav_col != page:
-    st.experimental_set_query_params(page=nav_col)
-    st.rerun()
-# ----------------------------------------------------------------------
-# Bottom Navigation
-# ----------------------------------------------------------------------
-st.markdown("""
-<div class="bottom-nav">
-    <a href="?page=Home" target="_self">Home</a>
-    <a href="?page=Checklist" target="_self">Checklist</a>
-    <a href="?page=Community" target="_self">Community</a>
-    <a href="?page=Account" target="_self">Account</a>
-    <a href="?page=Settings" target="_self">Settings</a>
-</div>
-""", unsafe_allow_html=True)
+page = st.sidebar.selectbox("Navigate", list(pages.keys()))
+if 'free_count' not in st.session_state: st.session_state.free_count = 0
+if 'is_pro' not in st.session_state: st.session_state.is_pro = False
 # ----------------------------------------------------------------------
 # Home – WITH LOCATION + CLEAN CARDS
 # ----------------------------------------------------------------------
@@ -269,11 +232,6 @@ if page == "Home":
         if guests.get(ip, 0) >= 3:
             st.warning("Free limit reached (3 ideas). Sign up to continue!")
             st.stop()
-    else:
-        if 'free_count' not in st.session_state:
-            st.session_state.free_count = users[st.session_state.user_email].get("free_count", 0)
-        if 'is_pro' not in st.session_state:
-            st.session_state.is_pro = users[st.session_state.user_email].get("is_pro", False)
     # Load saved skills
     extracted_skills = ""
     if 'user_email' in st.session_state:
@@ -283,7 +241,7 @@ if page == "Home":
             with open(skills_path, "r", encoding="utf-8") as f:
                 extracted_skills = f.read()
             st.success("Skills loaded from your saved resume!")
-    if 'user_email' in st.session_state and st.session_state.free_count >= 3 and not st.session_state.is_pro:
+    if st.session_state.free_count >= 3 and not st.session_state.is_pro:
         st.warning("Free limit reached (3 ideas/month). Upgrade for unlimited!")
         st.info("Pro: $4.99/month – unlimited ideas, priority AI, exclusive templates.")
     else:
@@ -323,9 +281,9 @@ if page == "Home":
                 # Update free count
                 if 'user_email' in st.session_state:
                     email = st.session_state.user_email
-                    st.session_state.free_count += 1
-                    users[email]["free_count"] = st.session_state.free_count
+                    users[email]["free_count"] = users[email].get("free_count", 0) + 1
                     save_json("users.json", users)
+                    st.session_state.free_count = users[email]["free_count"]
                 else:
                     ip = get_ip()
                     guests[ip] = guests.get(ip, 0) + 1
@@ -356,8 +314,7 @@ if page == "Home":
                         # Count swipe
                         if 'user_email' in st.session_state:
                             email = st.session_state.user_email
-                            st.session_state.free_count += 1
-                            users[email]["free_count"] = st.session_state.free_count
+                            users[email]["free_count"] = users[email].get("free_count", 0) + 1
                             save_json("users.json", users)
                         else:
                             ip = get_ip()
@@ -366,12 +323,11 @@ if page == "Home":
                         st.rerun()
                 with col3:
                     if st.button("❤️ Like", key=f"like_{index}"):
+                        st.session_state.liked_idea = idea_text
                         if 'user_email' in st.session_state:
                             email = st.session_state.user_email
                             path = os.path.join(CHECKLIST_DIR, f"{email}.json")
-                            data = load_json(path, [])
-                            new_entry = {"idea": idea_text, "checklist": generate_checklist(idea_text)}
-                            data.append(new_entry)
+                            data = {"idea": idea_text, "checklist": generate_checklist(idea_text)}
                             save_json(path, data)
                             st.success("Saved to your Checklist!")
                         st.session_state.idea_index += 1
@@ -379,57 +335,24 @@ if page == "Home":
             else:
                 st.success("You've seen all ideas! Generate more or upgrade.")
 # ----------------------------------------------------------------------
-# Account
+# Login
 # ----------------------------------------------------------------------
-elif page == "Account":
-    st.title("Account")
-    if 'user_email' in st.session_state:
-        st.write(f"Logged in as {st.session_state.username}")
-        if st.button("Log Out"):
-            st.experimental_set_query_params(logout="true")
-            st.rerun()
-        # Monetization section in Account tab
-        st.subheader("Upgrade to Pro")
-        st.write("Freemium: 3 free ideas/month, $4.99 for unlimited.")
-        st.write("Affiliates: Shopify, Canva links.")
-        st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
-        if st.button("Upgrade to Pro ($4.99/month)"):
-            pass # Add Stripe later
-    else:
-        # Login Form
-        st.subheader("Login")
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Sign In"):
-            if email in users and users[email]["password"] == password:
-                st.session_state.user_email = email
-                st.session_state.username = users[email]["username"]
-                st.session_state.free_count = users[email].get("free_count", 0)
-                st.session_state.is_pro = users[email].get("is_pro", False)
-                st.success(f"Signed in as {st.session_state.username}!")
-                st.experimental_set_query_params(page="Home")
-                st.rerun()
-            else:
-                st.error("Invalid email or password.")
-        st.write("New user?")
-        # Signup Form
-        st.subheader("Sign Up")
-        username = st.text_input("Username", key="signup_username")
-        signup_email = st.text_input("Email", key="signup_email")
-        signup_password = st.text_input("Password", type="password", key="signup_password")
-        if st.button("Sign Up"):
-            if signup_email not in users:
-                users[signup_email] = {"username": username, "password": signup_password, "free_count": 0, "is_pro": False}
-                save_json("users.json", users)
-                st.session_state.user_email = signup_email
-                st.session_state.username = username
-                st.session_state.free_count = 0
-                st.session_state.is_pro = False
-                st.success("Signed up successfully!")
-                st.experimental_set_query_params(page="Home")
-                st.rerun()
-            else:
-                st.error("Email already exists.")
+elif page == "Login":
+    st.title("Sign In to HustleAI")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    if st.button("Sign In"):
+        if email in users and users[email]["password"] == password:
+            st.session_state.user_email = email
+            st.session_state.username = users[email]["username"]
+            st.session_state.free_count = users[email].get("free_count", 0)
+            st.session_state.is_pro = users[email].get("is_pro", False)
+            st.success(f"Signed in as {st.session_state.username}!")
+        else:
+            st.error("Invalid email or password.")
+    st.write("New user?")
+    if st.button("Sign Up Here"):
+        st.switch_page("pages/_signup.py")
 # ----------------------------------------------------------------------
 # Community
 # ----------------------------------------------------------------------
@@ -489,62 +412,36 @@ elif page == "Community":
 # Checklist
 # ----------------------------------------------------------------------
 elif page == "Checklist":
-    st.title("My Checklists")
+    st.title("My Checklist")
     if 'user_email' in st.session_state:
         email = st.session_state.user_email
         path = os.path.join(CHECKLIST_DIR, f"{email}.json")
         if os.path.exists(path):
-            data = load_json(path, [])
-            for idx, entry in enumerate(data):
-                with st.expander(f"Liked Idea {idx+1}: {entry['idea'].splitlines()[0]}"):
-                    st.subheader("Your Liked Hustle")
-                    st.write(entry["idea"])
-                    st.subheader("Checklist")
-                    checklist = entry.get("checklist", [])
-                    for i, item in enumerate(checklist):
-                        c1, c2 = st.columns([3,1])
-                        with c1: st.write(item["goal"])
-                        with c2:
-                            try:
-                                due_value = datetime.strptime(item["due"], '%Y-%m-%d')
-                            except ValueError:
-                                due_value = datetime.now() + timedelta(days=7)
-                            new_date = st.date_input("Due", value=due_value, key=f"due_{idx}_{i}")
-                            checklist[i]["due"] = new_date.strftime('%Y-%m-%d')
+            data = load_json(path, {})
+            st.subheader("Your Liked Hustle")
+            st.write(data["idea"])
+            st.subheader("Checklist")
+            checklist = data.get("checklist", [])
+            for i, item in enumerate(checklist):
+                c1, c2 = st.columns([3,1])
+                with c1: st.write(item["goal"])
+                with c2:
+                    new_date = st.date_input("Due", value=datetime.strptime(item["due"], '%Y-%m-%d'), key=f"due_{i}")
+                    checklist[i]["due"] = new_date.strftime('%Y-%m-%d')
             if st.button("Save Changes"):
-                save_json(path, data)
-                st.success("Checklists updated!")
+                save_json(path, {"idea": data["idea"], "checklist": checklist})
+                st.success("Checklist updated!")
         else:
-            st.info("No checklists yet – generate ideas and swipe right on one.")
+            st.info("No checklist yet – generate ideas and swipe right on one.")
     else:
-        st.warning("Sign in to view your checklists.")
+        st.warning("Sign in to view your checklist.")
 # ----------------------------------------------------------------------
-# Settings
+# Monetization
 # ----------------------------------------------------------------------
-elif page == "Settings":
-    st.title("Settings")
-    if 'user_email' in st.session_state:
-        email = st.session_state.user_email
-        st.subheader("Account Information")
-        st.write(f"Username: {st.session_state.username}")
-        st.write(f"Email: {email}")
-        st.write(f"Subscription: {'Pro' if st.session_state.is_pro else 'Free'}")
-        # Assuming no expiration date, add if needed
-        # st.write(f"Subscription expires: {users[email].get('subscription_expiry', 'N/A')}")
-        
-        st.subheader("Change Password")
-        current_password = st.text_input("Current Password", type="password")
-        new_password = st.text_input("New Password", type="password")
-        confirm_password = st.text_input("Confirm New Password", type="password")
-        if st.button("Update Password"):
-            if current_password == users[email]["password"]:
-                if new_password == confirm_password and new_password:
-                    users[email]["password"] = new_password
-                    save_json("users.json", users)
-                    st.success("Password updated!")
-                else:
-                    st.error("New passwords do not match or are empty.")
-            else:
-                st.error("Current password is incorrect.")
-    else:
-        st.warning("Sign in to access settings.")
+elif page == "Monetization":
+    st.title("Monetization & Upgrade")
+    st.write("Freemium: 3 free ideas/month, $4.99 for unlimited.")
+    st.write("Affiliates: Shopify, Canva links.")
+    st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
+    if st.button("Upgrade to Pro ($4.99/month)"):
+        pass # Add Stripe later
