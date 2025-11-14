@@ -1,5 +1,6 @@
-import streamlit as st
-from utils import get_bottom_nav_html, authenticate_user
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 st.set_page_config(page_title="Account - HustleAI", layout="wide", initial_sidebar_state="collapsed")
 
