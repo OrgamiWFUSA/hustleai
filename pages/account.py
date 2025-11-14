@@ -1,13 +1,15 @@
 import streamlit as st
 from ..utils import *  # Import shared functions
 
+st.markdown(bottom_nav_css, unsafe_allow_html=True)
+
 st.title("Account")
 if 'user_email' in st.session_state:
     st.write(f"Logged in as {st.session_state.username}")
     if st.button("Log Out"):
         st.experimental_set_query_params(logout="true")
         st.rerun()
-    # Monetization section
+    # Monetization section in Account tab
     st.subheader("Upgrade to Pro")
     st.write("Freemium: 3 free ideas/month, $4.99 for unlimited.")
     st.write("Affiliates: Shopify, Canva links.")

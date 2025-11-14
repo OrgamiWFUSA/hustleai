@@ -1,4 +1,3 @@
-# hustleai.py  ←  This file stays super simple
 import streamlit as st
 
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered")
@@ -7,36 +6,39 @@ st.markdown("""
 <style>
     .bottom-nav {
         position: fixed;
-        bottom: 0; left: 0; right: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
         background-color: #001f3f;
-        padding: 12px;
+        padding: 10px;
+        color: white;
         display: flex;
         justify-content: space-around;
         z-index: 1000;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
     }
     .bottom-nav a {
         color: white;
         text-decoration: none;
-        font-weight: 600;
         font-size: 1rem;
+        padding: 5px 10px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Optional: show logo on the main page only
+# Optional landing content if no page is selected
+st.title("HustleAI")
+st.caption("Turn your skills into side income — anywhere.")
+
 try:
     st.image("logo.png", width=180)
 except:
     pass
 
-st.title("HustleAI")
-st.caption("Turn your skills into side income — anywhere.")
-
-# Bottom nav that appears on EVERY page
-st.markdown(f"""
+# Bottom nav (shared across all pages via Streamlit's caching, but add to each page.py for reliability)
+st.markdown("""
 <div class="bottom-nav">
-    <a href="/" target="_self">Home</a>
+    <a href="/Home" target="_self">Home</a>
     <a href="/Checklist" target="_self">Checklist</a>
     <a href="/Community" target="_self">Community</a>
     <a href="/Account" target="_self">Account</a>

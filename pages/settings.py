@@ -1,6 +1,8 @@
 import streamlit as st
 from ..utils import *  # Import shared functions
 
+st.markdown(bottom_nav_css, unsafe_allow_html=True)
+
 st.title("Settings")
 if 'user_email' in st.session_state:
     email = st.session_state.user_email

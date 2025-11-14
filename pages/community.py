@@ -1,6 +1,8 @@
 import streamlit as st
 from ..utils import *  # Import shared functions
 
+st.markdown(bottom_nav_css, unsafe_allow_html=True)
+
 st.title("Community Forum: Share Your Wins!")
 if 'username' not in st.session_state:
     st.warning("Sign in to post.")

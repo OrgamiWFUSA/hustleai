@@ -1,15 +1,17 @@
 import streamlit as st
-from openai import OpenAI
-import PyPDF2
 import os
 import json
 from datetime import datetime, timedelta
+from openai import OpenAI
+import PyPDF2
 
 # Constants
 UPLOAD_DIR = "uploads"
 CHECKLIST_DIR = "checklists"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(CHECKLIST_DIR, exist_ok=True)
+
+GUESTS_FILE = "guests.json"
 
 def load_json(path, default):
     if os.path.exists(path):
@@ -21,16 +23,12 @@ def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
-# GUEST TRACKING
-GUESTS_FILE = "guests.json"
-
 def get_ip():
     try:
         return st.context.headers.get("X-Forwarded-For", "unknown").split(',')[0].strip()
     except:
         return "unknown"
 
-# SKILL EXTRACTION FUNCTION
 def extract_skills_from_pdf(uploaded_file):
     reader = PyPDF2.PdfReader(uploaded_file)
     text = ""
@@ -62,7 +60,6 @@ def extract_skills_from_pdf(uploaded_file):
     
     return ', '.join(extracted_skills)
 
-# AI FUNCTIONS
 def generate_hustles(skills, location=""):
     location_prompt = f"in or near {location}" if location else "anywhere in the world"
     try:
@@ -167,4 +164,39 @@ def generate_checklist(idea):
         st.error(f"OpenAI error: {e}")
         return []
 
-# Shared GUEST TRACKING and load/save functions are already in utils.py - no need to duplicate
+# GUEST TRACKING
+guests = load_json(GUESTS_FILE, {})
+
+# Bottom Nav CSS (shared in utils.py for all pages to import)
+bottom_nav_css = """
+<style>
+    .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #001f3f;
+        padding: 10px;
+        color: white;
+        display: flex;
+        justify-content: space-around;
+        z-index: 1000;
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
+    }
+    .bottom-nav a {
+        color: white;
+        text-decoration: none;
+        font-size: 1rem;
+        padding: 5px 10px;
+    }
+</style>
+"""
+bottom_nav_html = """
+<div class="bottom-nav">
+    <a href="/Home" target="_self">Home</a>
+    <a href="/Checklist" target="_self">Checklist</a>
+    <a href="/Community" target="_self">Community</a>
+    <a href="/Account" target="_self">Account</a>
+    <a href="/Settings" target="_self">Settings</a>
+</div>
+"""

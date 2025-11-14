@@ -1,5 +1,7 @@
 import streamlit as st
-from ..utils import *  # Import shared functions from utils.py
+from ..utils import *  # Import shared functions
+
+st.markdown(bottom_nav_css, unsafe_allow_html=True)
 
 st.title("HustleAI Home")
 # GUEST LIMIT
@@ -119,9 +121,8 @@ else:
                         st.rerun()
             else:
                 st.success("You've seen all ideas! Generate more or upgrade.")
-# ----------------------------------------------------------------------
+
 # Bottom Navigation
-# ----------------------------------------------------------------------
 st.markdown("""
 <div class="bottom-nav">
     <a href="/Home" target="_self">Home</a>
