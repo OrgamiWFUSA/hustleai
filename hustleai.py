@@ -433,7 +433,7 @@ elif page == "Account":
 # ----------------------------------------------------------------------
 elif page == "Community":
     st.title("Community Forum: Share Your Wins!")
-    if 'username' not in st.session_state:
+    if 'username' in st.session_state:
         st.warning("Sign in to post.")
     else:
         st.subheader("New Post")
@@ -516,6 +516,16 @@ elif page == "Checklist":
             st.info("No checklists yet – generate ideas and swipe right on one.")
     else:
         st.warning("Sign in to view your checklists.")
+# ----------------------------------------------------------------------
+# Monetization
+# ----------------------------------------------------------------------
+elif page == "Monetization":
+    st.title("Monetization & Upgrade")
+    st.write("Freemium: 3 free ideas/month, $4.99 for unlimited.")
+    st.write("Affiliates: Shopify, Canva links.")
+    st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
+    if st.button("Upgrade to Pro ($4.99/month)"):
+        pass # Add Stripe later
 # ----------------------------------------------------------------------
 # Settings
 # ----------------------------------------------------------------------
