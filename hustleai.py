@@ -219,35 +219,10 @@ st.markdown("""
     .stFileUploader>div>div {border-radius: 12px; border: 2px dashed #42a5f5; padding: 1rem;}
     .idea-card {background:white; padding:2rem; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.15); text-align:left; margin:1.5rem 0; border-left: 6px solid #42a5f5; font-family: Arial, sans-serif;}
     .idea-card h2 {text-align: center; font-weight: bold;}
-    .header {background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: flex-end; align-items: center; width: 100%;}
-    .header a {color: white; margin: 0 10px; text-decoration: none;}
-    .header span {color: white; margin: 0 10px;}
     .bottom-nav {position: fixed; bottom: 0; left: 0; right: 0; background-color: #001f3f; padding: 10px; color: white; display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 -2px 5px rgba(0,0,0,0.2);}
     .bottom-nav a {color: white; text-decoration: none; font-size: 1rem; padding: 5px 10px;}
 </style>
 """, unsafe_allow_html=True)
-
-# Top Header
-st.markdown("""
-<div class="header">
-    <a href="?page=Home" target="_self">Home</a>
-    <a href="#">Email Preferences</a>
-    <a href="#">Help Center</a> |
-""", unsafe_allow_html=True)
-
-if 'user_email' in st.session_state:
-    st.markdown(f"""
-    <span>{st.session_state.username}</span>
-    <a href="?page=Settings" target="_self">Settings</a>
-    <a href="?logout=true" target="_self">Log Out</a>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <a href="?page=Login" target="_self">Log In</a>
-    <a href="?page=Signup" target="_self">Sign Up</a>
-    """, unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
 
 # Logo
 try:
@@ -263,7 +238,7 @@ pages_nav = {
     "Home": "Generate Hustles",
     "Checklist": "My Checklist",
     "Community": "Community Forum",
-    "Monetization": "Upgrade to Pro",
+    "Account": "Account",
     "Settings": "Settings"
 }
 nav_col = st.sidebar.selectbox("Navigate", list(pages_nav.keys()))
@@ -278,7 +253,7 @@ st.markdown("""
     <a href="?page=Home" target="_self">Home</a>
     <a href="?page=Checklist" target="_self">Checklist</a>
     <a href="?page=Community" target="_self">Community</a>
-    <a href="?page=Monetization" target="_self">Upgrade</a>
+    <a href="?page=Account" target="_self">Account</a>
     <a href="?page=Settings" target="_self">Settings</a>
 </div>
 """, unsafe_allow_html=True)
@@ -402,51 +377,50 @@ if page == "Home":
             else:
                 st.success("You've seen all ideas! Generate more or upgrade.")
 # ----------------------------------------------------------------------
-# Login
+# Account
 # ----------------------------------------------------------------------
-elif page == "Login":
-    st.title("Sign In to HustleAI")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-    if st.button("Sign In"):
-        if email in users and users[email]["password"] == password:
-            st.session_state.user_email = email
-            st.session_state.username = users[email]["username"]
-            st.session_state.free_count = users[email].get("free_count", 0)
-            st.session_state.is_pro = users[email].get("is_pro", False)
-            st.success(f"Signed in as {st.session_state.username}!")
-            st.experimental_set_query_params(page="Home")
+elif page == "Account":
+    st.title("Account")
+    if 'user_email' in st.session_state:
+        st.write(f"Logged in as {st.session_state.username}")
+        if st.button("Log Out"):
+            st.experimental_set_query_params(logout="true")
             st.rerun()
-        else:
-            st.error("Invalid email or password.")
-    st.write("New user?")
-    if st.button("Sign Up Here"):
-        st.experimental_set_query_params(page="Signup")
-        st.rerun()
-# ----------------------------------------------------------------------
-# Signup
-# ----------------------------------------------------------------------
-elif page == "Signup":
-    st.title("Sign Up to HustleAI")
-    username = st.text_input("Username")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-    if st.button("Sign Up"):
-        if email not in users:
-            users[email] = {"username": username, "password": password, "free_count": 0, "is_pro": False}
-            save_json("users.json", users)
-            st.session_state.user_email = email
-            st.session_state.username = username
-            st.session_state.free_count = 0
-            st.session_state.is_pro = False
-            st.success("Signed up successfully!")
-            st.experimental_set_query_params(page="Home")
-            st.rerun()
-        else:
-            st.error("Email already exists.")
-    if st.button("Back to Login"):
-        st.experimental_set_query_params(page="Login")
-        st.rerun()
+    else:
+        # Login Form
+        st.subheader("Login")
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Sign In"):
+            if email in users and users[email]["password"] == password:
+                st.session_state.user_email = email
+                st.session_state.username = users[email]["username"]
+                st.session_state.free_count = users[email].get("free_count", 0)
+                st.session_state.is_pro = users[email].get("is_pro", False)
+                st.success(f"Signed in as {st.session_state.username}!")
+                st.experimental_set_query_params(page="Home")
+                st.rerun()
+            else:
+                st.error("Invalid email or password.")
+        st.write("New user?")
+        # Signup Form
+        st.subheader("Sign Up")
+        username = st.text_input("Username", key="signup_username")
+        signup_email = st.text_input("Email", key="signup_email")
+        signup_password = st.text_input("Password", type="password", key="signup_password")
+        if st.button("Sign Up"):
+            if signup_email not in users:
+                users[signup_email] = {"username": username, "password": signup_password, "free_count": 0, "is_pro": False}
+                save_json("users.json", users)
+                st.session_state.user_email = signup_email
+                st.session_state.username = username
+                st.session_state.free_count = 0
+                st.session_state.is_pro = False
+                st.success("Signed up successfully!")
+                st.experimental_set_query_params(page="Home")
+                st.rerun()
+            else:
+                st.error("Email already exists.")
 # ----------------------------------------------------------------------
 # Community
 # ----------------------------------------------------------------------
