@@ -2,6 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered")
 
+# Custom CSS for Bottom Navigation
 st.markdown("""
 <style>
     .bottom-nav {
@@ -26,16 +27,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Optional landing content if no page is selected
+# Optional landing content
 st.title("HustleAI")
 st.caption("Turn your skills into side income — anywhere.")
-
 try:
     st.image("logo.png", width=180)
 except:
     pass
 
-# Bottom nav (shared across all pages via Streamlit's caching, but add to each page.py for reliability)
+# Bottom Navigation (will appear on all pages)
 st.markdown("""
 <div class="bottom-nav">
     <a href="/Home" target="_self">Home</a>
