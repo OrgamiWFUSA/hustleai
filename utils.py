@@ -94,7 +94,7 @@ def parse_resume_with_grok(resume_text, api_key):
 
 def generate_hustle_ideas(location="", num_ideas=5, api_key=""):
     """
-    New: AI-powered hustle idea generator using Grok API.
+    AI-powered hustle idea generator using Grok API.
     Generates tailored ideas based on optional location.
     Returns list of formatted idea strings.
     """
