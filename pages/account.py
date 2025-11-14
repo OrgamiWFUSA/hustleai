@@ -2,9 +2,12 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import streamlit as st
-from utils import get_bottom_nav_html, authenticate_user
+from utils import get_bottom_nav_html, authenticate_user, load_json, save_json
 
 st.set_page_config(page_title="Account - HustleAI", layout="wide", initial_sidebar_state="collapsed")
+
+# Load users data
+users = load_json("users.json", {})
 
 # Assuming the rest of the account page code follows here, extracted from the original single-file app
 # I've included the content from the original "elif page == 'Account':" block
