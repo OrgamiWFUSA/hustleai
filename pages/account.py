@@ -2,16 +2,12 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import streamlit as st
-from utils import get_bottom_nav_html, authenticate_user, load_json, save_json
+from utils import bottom_nav, load_json, save_json
 
-st.set_page_config(page_title="Account - HustleAI", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Account - HustleAI", layout="centered", initial_sidebar_state="expanded")
+bottom_nav()
 
-# Load users data
 users = load_json("users.json", {})
-
-# Assuming the rest of the account page code follows here, extracted from the original single-file app
-# I've included the content from the original "elif page == 'Account':" block
-# Adjust as needed if there are more refactors
 
 st.title("Account")
 if 'user_email' in st.session_state:
@@ -19,15 +15,13 @@ if 'user_email' in st.session_state:
     if st.button("Log Out"):
         st.experimental_set_query_params(logout="true")
         st.rerun()
-    # Monetization section in Account tab
     st.subheader("Upgrade to Pro")
     st.write("Freemium: 3 free ideas/month, $4.99 for unlimited.")
     st.write("Affiliates: Shopify, Canva links.")
-    st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
+    st.markdown("<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
     if st.button("Upgrade to Pro ($4.99/month)"):
-        pass  # Add Stripe later
+        pass  # Stripe code here
 else:
-    # Login Form
     st.subheader("Login")
     email = st.text_input("Email", key="login_email")
     password = st.text_input("Password", type="password", key="login_password")
@@ -43,7 +37,6 @@ else:
         else:
             st.error("Invalid email or password.")
     st.write("New user?")
-    # Signup Form
     st.subheader("Sign Up")
     username = st.text_input("Username", key="signup_username")
     signup_email = st.text_input("Email", key="signup_email")
@@ -61,9 +54,3 @@ else:
             st.rerun()
         else:
             st.error("Email already exists.")
-
-# Assuming utils has get_bottom_nav_html, call it if needed
-st.markdown(get_bottom_nav_html(), unsafe_allow_html=True)
-
-# If authenticate_user is used, integrate it appropriately, e.g.:
-# authenticate_user()  # Call if it's a function to handle auth

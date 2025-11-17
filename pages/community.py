@@ -2,9 +2,10 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import streamlit as st
-from utils import load_json, save_json, get_bottom_nav_html
+from utils import bottom_nav, load_json, save_json
 
 st.set_page_config(page_title="Community - HustleAI", layout="centered", initial_sidebar_state="expanded")
+bottom_nav()
 
 posts = load_json("posts.json", [])
 
@@ -61,5 +62,3 @@ for i, post in enumerate(posts[::-1]):
                                 st.rerun()
                     render(r["replies"], depth + 1, f"{pkey}_{i}_{j}")
         render(post["replies"])
-
-st.markdown(get_bottom_nav_html(), unsafe_allow_html=True)

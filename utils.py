@@ -1,56 +1,168 @@
+import os
+import json
+from openai import OpenAI
+import PyPDF2
+from datetime import datetime, timedelta
+import streamlit as st
+
+# Folders
+UPLOAD_DIR = "uploads"
+CHECKLIST_DIR = "checklists"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(CHECKLIST_DIR, exist_ok=True)
+
+def load_json(path, default):
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return default
+
+def save_json(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+def get_ip():
+    try:
+        return st.context.headers.get("X-Forwarded-For", "unknown").split(',')[0].strip()
+    except:
+        return "unknown"
+
+def bottom_nav():
+    st.markdown("""
+    <div class="bottom-nav">
+        <a href="?page=Home" target="_self">Home</a>
+        <a href="?page=Checklist" target="_self">Checklist</a>
+        <a href="?page=Community" target="_self">Community</a>
+        <a href="?page=Account" target="_self">Account</a>
+        <a href="?page=Settings" target="_self">Settings</a>
+    </div>
+    """, unsafe_allow_html=True)
+
+def extract_skills_from_pdf(uploaded_file):
+    reader = PyPDF2.PdfReader(uploaded_file)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() + "\n"
+    text_lower = text.lower()
+    common_skills = [
+        "active listening", "communication", "computer skills", "customer service",
+        "interpersonal skills", "leadership", "management", "problem-solving",
+        "time management", "transferable skills", "verbal communication",
+        "nonverbal communication", "written communication", "empathy",
+        "emotional intelligence", "collaboration", "teamwork", "presentation skills",
+        "negotiation", "conflict resolution", "adaptability", "creativity",
+        "critical thinking", "organization", "attention to detail", "project management",
+        "data analysis", "microsoft office", "excel", "powerpoint", "word",
+        "google workspace", "programming", "python", "java", "sql", "javascript",
+        "html", "css", "machine learning", "ai", "data science", "web development",
+        "graphic design", "adobe creative suite", "photoshop", "illustrator",
+        "sales", "marketing", "seo", "content creation", "social media management",
+        "public speaking", "research", "analytical skills", "budgeting",
+        "financial analysis", "accounting", "crm software", "salesforce",
+        "networking", "multitasking", "initiative", "reliability", "work ethic"
+    ]
+    extracted_skills = [skill for skill in common_skills if skill.lower() in text_lower]
+    extracted_skills = sorted(set(extracted_skills))
+    return ', '.join(extracted_skills)
+
+def generate_hustles(skills, location=""):
+    location_prompt = f"in or near {location}" if location else "anywhere in the world"
+    try:
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": f"Generate 3 side hustle ideas for someone skilled in {skills}, {location_prompt}. "
+                                                  "For each idea, provide the full complete response in this exact format (do not output partial responses, and no 'Idea #1' prefix):\n"
+                                                  "**Subject**\n"
+                                                  "First Month Overhead: $X (under $100)\n"
+                                                  "First Month Income Potential: $Y-$Z\n"
+                                                  "· Bullet point 1 with more detail of the idea\n"
+                                                  "· Bullet point 2 with more detail of the idea\n"
+                                                  "· Bullet point 3 with more detail of the idea\n"
+                                                  "· Bullet point 4 with more detail of the idea\n"
+                                                  "3-step launch plan:\n"
+                                                  "1. Step 1\n"
+                                                  "2. Step 2\n"
+                                                  "3. Step 3\n\n"
+                                                  "Example:\n"
+                                                  "**Freelance Graphic Design Services**\n"
+                                                  "First Month Overhead: $50 (under $100)\n"
+                                                  "First Month Income Potential: $300-$800\n"
+                                                  "· Leverage your graphic design skills to create logos, banners, and social media graphics for small businesses.\n"
+                                                  "· Target local startups or online entrepreneurs who need affordable design work.\n"
+                                                  "· Use free tools like Canva initially, upgrading as needed.\n"
+                                                  "· Offer packages starting at low rates to build a portfolio quickly.\n"
+                                                  "3-step launch plan:\n"
+                                                  "1. Build a simple portfolio on a free site like Behance.\n"
+                                                  "2. Post services on freelance platforms like Upwork or Fiverr.\n"
+                                                  "3. Network on social media and reach out to potential clients."}]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        st.error(f"OpenAI error: {e}")
+        return "Error generating ideas."
+
+def generate_single_hustle(skills, location=""):
+    location_prompt = f"in or near {location}" if location else "anywhere"
+    try:
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": f"Generate 1 new side hustle idea for someone skilled in {skills}, {location_prompt}. "
+                                                  "Provide the full complete response in this exact format (do not output partial responses, and no 'Idea #1' prefix):\n"
+                                                  "**Subject**\n"
+                                                  "First Month Overhead: $X (under $100)\n"
+                                                  "First Month Income Potential: $Y-$Z\n"
+                                                  "· Bullet point 1 with more detail of the idea\n"
+                                                  "· Bullet point 2 with more detail of the idea\n"
+                                                  "· Bullet point 3 with more detail of the idea\n"
+                                                  "· Bullet point 4 with more detail of the idea\n"
+                                                  "3-step launch plan:\n"
+                                                  "1. Step 1\n"
+                                                  "2. Step 2\n"
+                                                  "3. Step 3\n"
+                                                  "Example:\n"
+                                                  "**Freelance Graphic Design Services**\n"
+                                                  "First Month Overhead: $50 (under $100)\n"
+                                                  "First Month Income Potential: $300-$800\n"
+                                                  "· Leverage your graphic design skills to create logos, banners, and social media graphics for small businesses.\n"
+                                                  "· Target local startups or online entrepreneurs who need affordable design work.\n"
+                                                  "· Use free tools like Canva initially, upgrading as needed.\n"
+                                                  "· Offer packages starting at low rates to build a portfolio quickly.\n"
+                                                  "3-step launch plan:\n"
+                                                  "1. Build a simple portfolio on a free site like Behance.\n"
+                                                  "2. Post services on freelance platforms like Upwork or Fiverr.\n"
+                                                  "3. Network on social media and reach out to potential clients."}]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        st.error(f"OpenAI error: {e}")
+        return "Error."
+
 def generate_checklist(idea):
     try:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        prompt = f"""
-You are a world-class startup coach. Take this full side hustle idea and turn it into a 30-day launch roadmap.
-
-Generate 7–15 headline goals (major milestones). For each headline goal:
-- List 3–7 daily or weekly sub-tasks (what to do each day/week)
-- Assign a realistic due date (YYYY-MM-DD), starting today, spread over 30 days
-
-Format exactly like this:
-**Goal 1: [Headline] - YYYY-MM-DD**
-- [Daily/Weekly Task 1]
-- [Daily/Weekly Task 2]
-...
-
-Idea:
-{idea}
-"""
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format exactly as a numbered list like '1. Goal - YYYY-MM-DD' where due dates are in YYYY-MM-DD format. Idea: {idea}"}]
         )
-        text = response.choices[0].message.content.strip()
-        lines = text.split('\n')
-        
+        txt = response.choices[0].message.content
+        lines = txt.split('\n')
         goals = []
-        current = None
         for line in lines:
-            line = line.strip()
-            if line.startswith('**') and ' - ' in line:
-                if current:
-                    goals.append(current)
-                parts = line.split(' - ', 1)
-                goal_title = parts[0][2:].strip()  # Remove **
-                due_date = parts[1].strip() if len(parts) > 1 else ""
-                current = {"goal": goal_title, "due": due_date, "sub_tasks": []}
-            elif line.startswith('- ') and current:
-                current["sub_tasks"].append(line[2:].strip())
-        
-        if current:
-            goals.append(current)
-        
-        # Validate/fix dates
-        base = datetime.now()
-        for i, g in enumerate(goals):
-            try:
-                due = datetime.strptime(g["due"], "%Y-%m-%d")
-            except:
-                due = base + timedelta(days=i*2 + 3)  # Spread out
-            g["due"] = due.strftime("%Y-%m-%d")
-        
-        return goals[:15]  # Max 15 goals
+            if line.strip():
+                parts = line.split(' - ')
+                if len(parts) == 2:
+                    goal = parts[0].strip()
+                    due_str = parts[1].strip()
+                    try:
+                        due_date = datetime.strptime(due_str, '%Y-%m-%d')
+                        goals.append({"goal": goal, "due": due_date.strftime('%Y-%m-%d')})
+                    except ValueError:
+                        goals.append({"goal": goal, "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
+                else:
+                    goals.append({"goal": line.strip(), "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
+        return goals
     except Exception as e:
-        st.error("AI failed to generate checklist")
+        st.error(f"OpenAI error: {e}")
         return []
