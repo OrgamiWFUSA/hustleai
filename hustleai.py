@@ -1,15 +1,14 @@
 import streamlit as st
-from openai import OpenAI
-import PyPDF2
-import stripe
 import os
 import json
+from openai import OpenAI
+import PyPDF2
 from datetime import datetime, timedelta
+
 # ----------------------------------------------------------------------
 # PAGE CONFIG + ENABLE BACK BUTTON
 # ----------------------------------------------------------------------
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered", initial_sidebar_state="expanded")
-st.experimental_set_query_params(**st.experimental_get_query_params())
 params = st.experimental_get_query_params()
 if "logout" in params and params["logout"][0] == "true":
     if 'user_email' in st.session_state:
@@ -30,6 +29,7 @@ openai_key = st.secrets["OPENAI_API_KEY"]
 # ----------------------------------------------------------------------
 # STRIPE KEYS
 # ----------------------------------------------------------------------
+import stripe
 stripe.api_key = st.secrets.get("STRIPE_SECRET_KEY", "")
 publishable_key = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "")
 # ----------------------------------------------------------------------
@@ -65,16 +65,11 @@ if "ip" not in st.session_state:
 # SKILL EXTRACTION FUNCTION
 # ----------------------------------------------------------------------
 def extract_skills_from_pdf(uploaded_file):
-    # Extract all text from the PDF
     reader = PyPDF2.PdfReader(uploaded_file)
     text = ""
     for page in reader.pages:
         text += page.extract_text() + "\n"
-    
-    # Convert text to lowercase for case-insensitive matching
     text_lower = text.lower()
-    
-    # List of common skills (compiled from resume best practices)
     common_skills = [
         "active listening", "communication", "computer skills", "customer service",
         "interpersonal skills", "leadership", "management", "problem-solving",
@@ -92,13 +87,8 @@ def extract_skills_from_pdf(uploaded_file):
         "financial analysis", "accounting", "crm software", "salesforce",
         "networking", "multitasking", "initiative", "reliability", "work ethic"
     ]
-    
-    # Find matching skills in the text
     extracted_skills = [skill for skill in common_skills if skill.lower() in text_lower]
-    
-    # Remove duplicates and sort
     extracted_skills = sorted(set(extracted_skills))
-    
     return ', '.join(extracted_skills)
 # ----------------------------------------------------------------------
 # AI FUNCTIONS — WITH LOCATION SUPPORT
@@ -180,7 +170,7 @@ def generate_checklist(idea):
         client = OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": f"Break down this side hustle idea into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format exactly as a numbered list like '1. Goal - YYYY-MM-DD' where due dates are in YYYY-MM-DD format."}]
+            messages=[{"role": "user", "content": f"Break down this side hustle idea: {idea} into a checklist of 5-10 goals with specific due dates (start from today, spread over 1 month). Format exactly as a numbered list like '1. Goal - YYYY-MM-DD' where due dates are in YYYY-MM-DD format."}]
         )
         txt = response.choices[0].message.content
         lines = txt.split('\n')
@@ -192,11 +182,9 @@ def generate_checklist(idea):
                     goal = parts[0].strip()
                     due_str = parts[1].strip()
                     try:
-                        # Validate and parse the date
                         due_date = datetime.strptime(due_str, '%Y-%m-%d')
                         goals.append({"goal": goal, "due": due_date.strftime('%Y-%m-%d')})
                     except ValueError:
-                        # If invalid, use default
                         goals.append({"goal": goal, "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
                 else:
                     goals.append({"goal": line.strip(), "due": (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')})
@@ -223,7 +211,6 @@ st.markdown("""
     .bottom-nav a {color: white; text-decoration: none; font-size: 1rem; padding: 5px 10px;}
 </style>
 """, unsafe_allow_html=True)
-
 # Logo
 try:
     st.image("logo.png", use_column_width=False, width=180)
@@ -263,7 +250,7 @@ st.markdown("""
 if page == "Home":
     # GUEST LIMIT
     if 'user_email' not in st.session_state:
-        ip = get_ip()
+        ip = st.session_state.ip
         if guests.get(ip, 0) >= 3:
             st.warning("Free limit reached (3 ideas). Sign up to continue!")
             st.stop()
@@ -272,7 +259,6 @@ if page == "Home":
             st.session_state.free_count = users[st.session_state.user_email].get("free_count", 0)
         if 'is_pro' not in st.session_state:
             st.session_state.is_pro = users[st.session_state.user_email].get("is_pro", False)
-    # Load saved skills
     extracted_skills = ""
     if 'user_email' in st.session_state:
         email = st.session_state.user_email
@@ -305,7 +291,7 @@ if page == "Home":
                 with open(skills_path, "w", encoding="utf-8") as f:
                     f.write(extracted)
                 st.success("Resume uploaded and skills extracted!")
-                extracted_skills = extracted  # Update local variable
+                extracted_skills = extracted
         final_skills = extracted_skills
         if additional_skills:
             final_skills += ", " + additional_skills if final_skills else additional_skills
@@ -325,7 +311,7 @@ if page == "Home":
                     users[email]["free_count"] = st.session_state.free_count
                     save_json("users.json", users)
                 else:
-                    ip = get_ip()
+                    ip = st.session_state.ip
                     guests[ip] = guests.get(ip, 0) + 1
                     save_json(GUESTS_FILE, guests)
             else:
@@ -336,7 +322,6 @@ if page == "Home":
             index = st.session_state.idea_index
             if index < len(ideas_list):
                 idea_text = ideas_list[index]
-                # Render with centering for title
                 idea_text = idea_text.replace('**', '<b>').replace('**', '</b>')
                 st.markdown(f"""
                 <div class="idea-card">
@@ -358,7 +343,7 @@ if page == "Home":
                             users[email]["free_count"] = st.session_state.free_count
                             save_json("users.json", users)
                         else:
-                            ip = get_ip()
+                            ip = st.session_state.ip
                             guests[ip] = guests.get(ip, 0) + 1
                             save_json(GUESTS_FILE, guests)
                         st.rerun()
@@ -433,7 +418,7 @@ elif page == "Account":
 # ----------------------------------------------------------------------
 elif page == "Community":
     st.title("Community Forum: Share Your Wins!")
-    if 'username' in st.session_state:
+    if 'user_email' not in st.session_state:
         st.warning("Sign in to post.")
     else:
         st.subheader("New Post")
@@ -454,33 +439,35 @@ elif page == "Community":
     for i, post in enumerate(posts[::-1]):
         with st.expander(f"**{post['title']}** by {post['username']}"):
             st.write(post["content"])
-            reply_text = st.text_area("Reply", key=f"r_post_{i}")
-            if st.button("Reply", key=f"rb_post_{i}"):
-                if reply_text:
-                    post["replies"].append({
-                        "username": st.session_state.username,
-                        "content": reply_text,
-                        "replies": []
-                    })
-                    save_json("posts.json", posts)
-                    st.success("Replied!")
-                    st.rerun()
+            if 'user_email' in st.session_state:
+                reply_text = st.text_area("Reply", key=f"r_post_{i}")
+                if st.button("Reply", key=f"rb_post_{i}"):
+                    if reply_text:
+                        post["replies"].append({
+                            "username": st.session_state.username,
+                            "content": reply_text,
+                            "replies": []
+                        })
+                        save_json("posts.json", posts)
+                        st.success("Replied!")
+                        st.rerun()
             def render(replies, depth=1, pkey=""):
                 for j, r in enumerate(replies):
                     indent = " " * depth
                     with st.expander(f"{indent}↳ **{r['username']}**"):
                         st.write(r["content"])
-                        sub = st.text_area("Reply", key=f"r_{pkey}_{i}_{j}")
-                        if st.button("Reply", key=f"rb_{pkey}_{i}_{j}"):
-                            if sub:
-                                r["replies"].append({
-                                    "username": st.session_state.username,
-                                    "content": sub,
-                                    "replies": []
-                                })
-                                save_json("posts.json", posts)
-                                st.success("Replied!")
-                                st.rerun()
+                        if 'user_email' in st.session_state:
+                            sub = st.text_area("Reply", key=f"r_{pkey}_{i}_{j}")
+                            if st.button("Reply", key=f"rb_{pkey}_{i}_{j}"):
+                                if sub:
+                                    r["replies"].append({
+                                        "username": st.session_state.username,
+                                        "content": sub,
+                                        "replies": []
+                                    })
+                                    save_json("posts.json", posts)
+                                    st.success("Replied!")
+                                    st.rerun()
                         render(r["replies"], depth + 1, f"{pkey}_{i}_{j}")
             render(post["replies"])
 # ----------------------------------------------------------------------
@@ -491,41 +478,28 @@ elif page == "Checklist":
     if 'user_email' in st.session_state:
         email = st.session_state.user_email
         path = os.path.join(CHECKLIST_DIR, f"{email}.json")
-        if os.path.exists(path):
-            data = load_json(path, [])
-            for idx, entry in enumerate(data):
-                with st.expander(f"Liked Idea {idx+1}: {entry['idea'].splitlines()[0]}"):
-                    st.subheader("Your Liked Hustle")
-                    st.write(entry["idea"])
-                    st.subheader("Checklist")
-                    checklist = entry.get("checklist", [])
-                    for i, item in enumerate(checklist):
-                        c1, c2 = st.columns([3,1])
-                        with c1: st.write(item["goal"])
-                        with c2:
-                            try:
-                                due_value = datetime.strptime(item["due"], '%Y-%m-%d')
-                            except ValueError:
-                                due_value = datetime.now() + timedelta(days=7)
-                            new_date = st.date_input("Due", value=due_value, key=f"due_{idx}_{i}")
-                            checklist[i]["due"] = new_date.strftime('%Y-%m-%d')
-            if st.button("Save Changes"):
-                save_json(path, data)
-                st.success("Checklists updated!")
-        else:
-            st.info("No checklists yet – generate ideas and swipe right on one.")
+        data = load_json(path, [])
+        for idx, entry in enumerate(data):
+            with st.expander(f"Liked Idea {idx+1}: {entry['idea'].splitlines()[0]}"):
+                st.subheader("Your Liked Hustle")
+                st.write(entry["idea"])
+                st.subheader("Checklist")
+                checklist = entry.get("checklist", [])
+                for i, item in enumerate(checklist):
+                    c1, c2 = st.columns([3,1])
+                    with c1: st.write(item["goal"])
+                    with c2:
+                        try:
+                            due_value = datetime.strptime(item["due"], '%Y-%m-%d')
+                        except ValueError:
+                            due_value = datetime.now() + timedelta(days=7)
+                        new_date = st.date_input("Due", value=due_value, key=f"due_{idx}_{i}")
+                        checklist[i]["due"] = new_date.strftime('%Y-%m-%d')
+        if st.button("Save Changes"):
+            save_json(path, data)
+            st.success("Checklists updated!")
     else:
         st.warning("Sign in to view your checklists.")
-# ----------------------------------------------------------------------
-# Monetization
-# ----------------------------------------------------------------------
-elif page == "Monetization":
-    st.title("Monetization & Upgrade")
-    st.write("Freemium: 3 free ideas/month, $4.99 for unlimited.")
-    st.write("Affiliates: Shopify, Canva links.")
-    st.markdown(f"<script src='https://js.stripe.com/v3/'></script>", unsafe_allow_html=True)
-    if st.button("Upgrade to Pro ($4.99/month)"):
-        pass # Add Stripe later
 # ----------------------------------------------------------------------
 # Settings
 # ----------------------------------------------------------------------
@@ -537,9 +511,6 @@ elif page == "Settings":
         st.write(f"Username: {st.session_state.username}")
         st.write(f"Email: {email}")
         st.write(f"Subscription: {'Pro' if st.session_state.is_pro else 'Free'}")
-        # Assuming no expiration date, add if needed
-        # st.write(f"Subscription expires: {users[email].get('subscription_expiry', 'N/A')}")
-        
         st.subheader("Change Password")
         current_password = st.text_input("Current Password", type="password")
         new_password = st.text_input("New Password", type="password")
