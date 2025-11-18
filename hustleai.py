@@ -1,5 +1,5 @@
 import streamlit as st
-from utils import load_json, save_json, get_ip, extract_skills_from_pdf, generate_hustles, generate_single_hustle, generate_checklist, bottom_nav
+from utils import load_json, save_json, get_ip, extract_skills_from_pdf, generate_hustles, generate_single_hustle, generate_checklist, bottom_nav, UPLOAD_DIR, CHECKLIST_DIR
 
 # Page config
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered", initial_sidebar_state="expanded")
