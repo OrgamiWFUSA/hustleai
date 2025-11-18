@@ -5,6 +5,11 @@ import PyPDF2
 from datetime import datetime, timedelta
 import streamlit as st
 
+UPLOAD_DIR = "uploads"
+CHECKLIST_DIR = "checklists"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(CHECKLIST_DIR, exist_ok=True)
+
 # Folders
 UPLOAD_DIR = "uploads"
 CHECKLIST_DIR = "checklists"
