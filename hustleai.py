@@ -4,7 +4,20 @@ from utils import load_json, save_json, get_ip, extract_skills_from_pdf, generat
 # Page config
 st.set_page_config(page_title="HustleAI", page_icon="rocket", layout="centered", initial_sidebar_state="expanded")
 
-# Bottom nav (called on every page)
+# Query params (moved early to fix NameError)
+params = st.experimental_get_query_params()
+
+# Logout handling
+if "logout" in params and params["logout"][0] == "true":
+    if 'user_email' in st.session_state:
+        del st.session_state.user_email
+        del st.session_state.username
+        del st.session_state.free_count
+        del st.session_state.is_pro
+    st.experimental_set_query_params(page="Home")
+    st.rerun()
+
+# Bottom nav
 bottom_nav()
 
 # Header
@@ -51,6 +64,7 @@ if 'ip' not in st.session_state:
 
 # Home logic (full from your original)
 guests = load_json("guests.json", {})
+users = load_json("users.json", {})
 if 'user_email' not in st.session_state:
     if guests.get(st.session_state.ip, 0) >= 3:
         st.warning("Free limit reached (3 ideas). Sign up to continue!")
@@ -119,7 +133,7 @@ else:
                 save_json("guests.json", guests)
         else:
             st.warning("Upload a resume or enter additional skills first.")
-    # Swipe cards
+    # CLEAN SWIPE CARDS
     if 'ideas_list' in st.session_state and st.session_state.ideas_list:
         ideas_list = st.session_state.ideas_list
         index = st.session_state.idea_index
